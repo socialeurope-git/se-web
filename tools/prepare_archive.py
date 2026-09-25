@@ -70,7 +70,7 @@ def wrap_blocks(body):
         cls=re.search(r'class="([^"]*)"',attrs); cls=set(cls.group(1).split()) if cls else set()
         plain_cls=cls<= {'wp-block-paragraph','wp-block-heading','wp-block-list','wp-block-quote'} | {f'p{i}' for i in range(1,10)}
         text=re.sub(r'<[^>]+>','',el).replace('&nbsp;','').strip()
-        if tag=='p' and plain_cls and 'style=' not in attrs and not re.search(r'<(img|figure|iframe|table|video|audio|picture)',el) and text:
+        if tag=='p' and plain_cls and 'style=' not in attrs and not re.search(r'<(img|figure|iframe|table|video|audio|picture|br)',el) and text:   # <br> is dropped by the converter -> keep verbatim
             out.append(f'<!-- wp:paragraph -->\n{el}\n<!-- /wp:paragraph -->')
         elif tag in('h1','h2','h3','h4','h5','h6') and plain_cls and 'style=' not in attrs:
             lvl=int(tag[1]); attr='' if lvl==2 else ' {"level":%d}'%lvl
@@ -153,11 +153,29 @@ for p in sel:
     head_title=re.search(r'<title>(.*?)</title>',h,re.S)
     fx={'id':pid,'slug':p['slug'],'bylines':[{'slug':s,'name':n} for s,n,_ in bylines],'heroBg':hero_bg.group(1) if hero_bg else None,'relInline':rel_inline,'relBand':rel_band,'title':html.unescape(head_title.group(1).strip()) if head_title else title,'dek':dek,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1]}
     json.dump(fx,open(f'{A}/fixtures/{pid}.json','w')); fixtures_written+=1
-# pages (editorial etc.) as plain items
+# pages: body from the rendered live page (archive/live-pages/<slug>.html), fixture with the template wrappers
+PAGES_DIR=os.path.join(os.path.dirname(A),'archive','live-pages') if os.path.basename(A)=='archive' else os.path.join(A,'live-pages')
 for pg in pages:
-    if only is not None and pg['id'] not in only: continue
-    body=pg['content']['rendered']; title=html.unescape(re.sub('<[^>]+>','',pg['title']['rendered']))
-    items.append(f'''<item><title>{cdata(title)}</title><link>{escape(pg['link'])}</link><dc:creator>social-europe</dc:creator><guid isPermaLink="false">https://www.socialeurope.eu/?page_id={pg['id']}</guid><content:encoded>{cdata(wrap_blocks(body))}</content:encoded><excerpt:encoded>{cdata(html.unescape(re.sub('<[^>]+>','',pg['excerpt']['rendered'])).strip())}</excerpt:encoded><wp:post_id>{pg['id']}</wp:post_id><wp:post_date>{pg['date'].replace('T',' ')}</wp:post_date><wp:post_date_gmt>{pg['date'].replace('T',' ')}</wp:post_date_gmt><wp:post_name>{escape(pg['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>{pg.get('parent',0)}</wp:post_parent><wp:post_type>page</wp:post_type></item>''')
+    if only is not None and pg['id'] not in only and 'pages' not in (sys.argv[5:] or []): continue
+    lp=os.path.join(PAGES_DIR,f"{pg['slug']}.html"); h=open(lp,encoding='utf-8',errors='replace').read() if os.path.exists(lp) else None
+    title=html.unescape(re.sub('<[^>]+>','',pg['title']['rendered']))
+    if h:
+        ec=h.split('<div class="entry-content"',1)[1]; ec=ec[ec.find('>')+1:].split('</article>')[0]
+        # drop the closing </div> of .entry-content and anything after it
+        depth=1; end=len(ec)
+        for t in re.finditer(r'<(/?)div\b[^>]*>',ec):
+            depth+= -1 if t.group(1) else 1
+            if depth==0: end=t.start(); break
+        body=ec[:end].strip()
+        intro=re.search(r'<section class="se-ed-intro">(.*?)</section>',h,re.S); cta=re.search(r'<section class="se-ed-cta">.*?</section>',h,re.S)
+        fi=re.search(r'<div class="featured-image page-header-image[^"]*">.*?</div>',h,re.S)
+        fx={'id':pg['id'],'slug':pg['slug'],'title':title,'template':pg.get('template') or 'default','bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),
+            'introHtml':intro.group(0) if intro else None,'ctaHtml':cta.group(0) if cta else None,'featuredHtml':fi.group(0) if fi else None,
+            'headTitle':html.unescape(re.search(r'<title>(.*?)</title>',h,re.S).group(1).strip()),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1],'hasSidebar':'id="right-sidebar"' in h}
+        json.dump(fx,open(f'{A}/fixtures/page-{pg["slug"]}.json','w'))
+    else:
+        body=pg['content']['rendered']
+    items.append(f'''<item><title>{cdata(title)}</title><link>{escape(pg['link'])}</link><dc:creator>social-europe</dc:creator><guid isPermaLink="false">https://www.socialeurope.eu/?page_id={pg['id']}</guid><content:encoded>{cdata(wrap_blocks(body))}</content:encoded><wp:post_id>{pg['id']}</wp:post_id><wp:post_date>{pg['date'].replace('T',' ')}</wp:post_date><wp:post_date_gmt>{pg['date'].replace('T',' ')}</wp:post_date_gmt><wp:post_modified>{pg['modified'].replace('T',' ')}</wp:post_modified><wp:post_name>{escape(pg['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>{pg.get('parent',0)}</wp:post_parent><wp:post_type>page</wp:post_type></item>''')
 authors_xml=''.join(f'<wp:author><wp:author_id>{i+1}</wp:author_id><wp:author_login>{cdata(a["slug"])}</wp:author_login><wp:author_email>{cdata(a["slug"]+"@example.invalid")}</wp:author_email><wp:author_display_name>{cdata(a["name"])}</wp:author_display_name></wp:author>' for i,a in enumerate(authors.values()))
 authors_xml+='<wp:author><wp:author_id>9999</wp:author_id><wp:author_login>social-europe</wp:author_login><wp:author_email>editor@example.invalid</wp:author_email><wp:author_display_name>Social Europe</wp:author_display_name></wp:author>'
 cx=''.join(f'<wp:category><wp:term_id>{c["id"]}</wp:term_id><wp:category_nicename>{c["slug"]}</wp:category_nicename><wp:category_parent></wp:category_parent><wp:cat_name>{cdata(c["name"])}</wp:cat_name></wp:category>' for c in cats.values())

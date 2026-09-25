@@ -1,0 +1,23 @@
+---
+/** Static pages: default template (entry-header + content) and the "SE Editorial" template (intro section, content, optional CTA). */
+import SE from "../layouts/SE.astro";
+import { renderBlocks } from "./render";
+import { escapeHtml } from "./format";
+import { pageFixture } from "./page";
+import sidebar from "./partials/sidebar.html?raw";
+interface Props { page: { id: string; data: Record<string, unknown> }; slug: string }
+const { page, slug } = Astro.props;
+const fx = pageFixture(slug);
+const title = page.data.title as string;
+const body = renderBlocks(page.data.content as never[]);
+const editorial = (fx?.template ?? "") === "se-editorial";
+const bodyClass = fx?.bodyClass ?? `wp-singular page-template-default page page-id-${fx?.id ?? 0} wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-left slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover`;
+const articleClass = fx?.articleClass ?? `post-${fx?.id ?? 0} page type-page status-publish`;
+const main = editorial
+	? `${fx?.introHtml ?? ""}\n<article id="post-${fx?.id ?? 0}" class="${articleClass}">\n<div class="inside-article">\n<div class="entry-content">\n${body}\n</div>\n</div>\n</article>\n${fx?.ctaHtml ?? ""}`
+	: `<article id="post-${fx?.id ?? 0}" class="${articleClass}">\n<div class="inside-article">\n<header class="entry-header">\n<h1 class="entry-title">${escapeHtml(title)}</h1>\n</header>\n${fx?.featuredHtml ?? ""}\n<div class="entry-content">\n${body}\n</div>\n</div>\n</article>`;
+---
+<SE stylesheet={fx?.hasSidebar ? "site" : "nosidebar"} title={fx?.headTitle ?? `${title} - Social Europe`} canonical={`https://www.socialeurope.eu/${slug}`} bodyClass={bodyClass} robots="max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+	<Fragment set:html={main} />
+	{fx?.hasSidebar && <Fragment slot="sidebar" set:html={sidebar} />}
+</SE>
