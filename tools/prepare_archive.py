@@ -59,21 +59,44 @@ def top_level(fragment):
     if buf.strip(): out.append(buf.strip())
     return out
 def wrap_blocks(body):
-    """Wrap top-level elements in Gutenberg comments: p/h/ul/ol/blockquote become editable blocks, everything else stays raw HTML."""
+    """Wrap top-level elements in Gutenberg comments: plain p/h/ul/ol/blockquote become editable blocks (with the
+    attributes the converter needs), everything else stays raw HTML so the rendered markup is preserved verbatim."""
     out=[]
     for el in top_level(body):
-        m=re.match(r'<([a-zA-Z0-9]+)',el); tag=m.group(1).lower() if m else ''
-        if tag=='p' and not re.search(r'<(img|figure|iframe|table)',el): out.append(f'<!-- wp:paragraph -->\n{el}\n<!-- /wp:paragraph -->')
-        elif tag in('h1','h2','h3','h4','h5','h6'): out.append(f'<!-- wp:heading -->\n{el}\n<!-- /wp:heading -->')
-        elif tag in('ul','ol') and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el: out.append(f'<!-- wp:list -->\n{el}\n<!-- /wp:list -->')
-        elif tag=='blockquote' and '<img' not in el: out.append(f'<!-- wp:quote -->\n{el}\n<!-- /wp:quote -->')
-        else: out.append(f'<!-- wp:html -->\n{el}\n<!-- /wp:html -->')
+        m=re.match(r'<([a-zA-Z0-9]+)([^>]*)>',el); tag=m.group(1).lower() if m else ''; attrs=m.group(2) if m else ''
+        cls=re.search(r'class="([^"]*)"',attrs); cls=set(cls.group(1).split()) if cls else set()
+        plain_cls=cls<= {'wp-block-paragraph','wp-block-heading','wp-block-list','wp-block-quote'} | {f'p{i}' for i in range(1,10)}
+        text=re.sub(r'<[^>]+>','',el).replace('&nbsp;','').strip()
+        if tag=='p' and plain_cls and 'style=' not in attrs and not re.search(r'<(img|figure|iframe|table|video|audio|picture)',el) and text:
+            out.append(f'<!-- wp:paragraph -->\n{el}\n<!-- /wp:paragraph -->')
+        elif tag in('h1','h2','h3','h4','h5','h6') and plain_cls and 'style=' not in attrs:
+            lvl=int(tag[1]); attr='' if lvl==2 else ' {"level":%d}'%lvl
+            out.append(f'<!-- wp:heading{attr} -->\n{el}\n<!-- /wp:heading -->')
+        elif tag in('ul','ol') and plain_cls and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el:
+            attr=' {"ordered":true}' if tag=='ol' else ''
+            out.append(f'<!-- wp:list{attr} -->\n{el}\n<!-- /wp:list -->')
+        elif tag=='blockquote' and plain_cls and '<img' not in el and not re.search(r'<(ul|ol|h[1-6])',el):
+            out.append(f'<!-- wp:quote -->\n{el}\n<!-- /wp:quote -->')
+        else:
+            out.append(f'<!-- wp:html -->\n{el}\n<!-- /wp:html -->')
     return '\n\n'.join(out)
 def cdata(s): return '<![CDATA['+s.replace(']]>',']]]]><![CDATA[>')+']]>'
 authors={}
 def author_from_hero(h):
-    """capture exact avatar markup + name per author slug from the hero byline"""
+    """capture exact avatar markup + name per author slug from the hero byline (inline for one author, stacked for several)"""
     res=[]
+    stack=re.search(r'<div class="se-hero__byline se-hero__byline--stacked">(.*?)<p class="se-hero__names">(.*?)</p></div>',h,re.S)
+    if stack:
+        avs={m.group(1):m.group(2) for m in re.finditer(r'<a class="se-avatar se-avatar--stack" href="https://www\.socialeurope\.eu/author/([^"/]+)/?"[^>]*>(.*?)</a>',stack.group(1),re.S)}
+        for m in re.finditer(r'<a class="se-hero__name" href="https://www\.socialeurope\.eu/author/([^"/]+)/?" rel="author">([^<]*)</a>',stack.group(2)):
+            slug,name=m.group(1),html.unescape(m.group(2)).strip(); inner=avs.get(slug,'')
+            av=f'<span class="se-avatar">{inner}</span>' if '<picture' in inner else (f'<span class="se-avatar se-avatar--initials">{inner.strip()}</span>' if inner.strip() and '<' not in inner else '')
+            res.append((slug,name,av))
+            a=authors.setdefault(slug,{'slug':slug,'name':name,'avatarHtml':'','bio':'','url':f'https://www.socialeurope.eu/author/{slug}'})
+            if av and not a['avatarHtml']: a['avatarHtml']=av
+            u=users.get(slug)
+            if u and not a['bio']: a['bio']=u.get('description',''); a['name']=u.get('name') or name
+        return res
     for m in re.finditer(r'<a class="se-hero__author" href="https://www\.socialeurope\.eu/author/([^"/]+)/?" rel="author">(<span class="se-avatar[^"]*">.*?</span>)?<span class="se-hero__name">([^<]*)</span></a>',h,re.S):
         slug,av,name=m.group(1),m.group(2) or '',html.unescape(m.group(3)).strip()
         # avatar span may be '<span class="se-avatar"><picture>...</picture></span>' or initials span
@@ -97,6 +120,9 @@ for p in sel:
     inner=entry[entry.find('>')+1:]                      # drop the .entry-content wrapper itself
     body=clean_body(inner); content=wrap_blocks(body)
     bylines=author_from_hero(h)
+    for m in re.finditer(r'<div class="se-author-profile-box se-author-profile"><h4 class="se-box-header">AUTHOR PROFILE</h4><div class="se-box-inner"><div class="se-author-avatar">(.*?)</div><div class="se-author-text"><h3 class="se-author-name-title"><a href="https://www\.socialeurope\.eu/author/([^"/]+)/?">',h,re.S):
+        a=authors.get(m.group(2))
+        if a is not None and not a.get('avatarBoxHtml'): a['avatarBoxHtml']=m.group(1)
     if not bylines and coauthors.get(str(pid)):
         bylines=[(a['slug'],a['name'],'') for a in coauthors[str(pid)]]
     creator=bylines[0][0] if bylines else 'social-europe'

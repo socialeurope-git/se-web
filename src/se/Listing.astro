@@ -1,0 +1,34 @@
+---
+/** Shared listing renderer for home / category / tag / author pages. */
+import SE from "../layouts/SE.astro";
+import { listPosts, cardHtml, firstPostHtml, moreList, archiveNav, authorArchiveHeader, type ListingKind } from "./listing";
+import { authors } from "./data";
+import { escapeHtml } from "./format";
+import sidebar from "./partials/sidebar.html?raw";
+import sidebarHome from "./partials/sidebar-home.html?raw";
+import seMost from "./partials/home-se-most.html?raw";
+import seBooks from "./partials/home-se-books.html?raw";
+
+interface Props { kind: ListingKind; slug?: string | null; page: number }
+const { kind, slug = null, page } = Astro.props;
+const { ids, total, pages, term, authorId } = listPosts(kind, slug, page);
+if ((kind !== "home" && !ids.length && page === 1) || page > pages) return new Response(null, { status: 404 });
+
+const base = kind === "home" ? "https://www.socialeurope.eu" : kind === "author" ? `https://www.socialeurope.eu/author/${slug}` : `https://www.socialeurope.eu/${kind}/${slug}`;
+const canonical = page === 1 ? base : `${base}/page/${page}`;
+const common = "wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-left generate-columns-activated slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover";
+let bodyClass = "", title = "", header = "", description: string | null = null;
+if (kind === "home") { bodyClass = `home blog${page > 1 ? ` paged` : ""} ${common}${page > 1 ? ` paged-${page}` : ""}`; title = page > 1 ? `Social Europe - Page ${page}` : "Social Europe"; description = "Social Europe is an award-winning digital media publisher driven by the core values of freedom, sustainability and equality."; }
+else if (kind === "category") { bodyClass = `archive category category-${slug} category-${term!.id} ${common}`; title = `Category: ${term!.name}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = `<header class="page-header" aria-label="Page">\n\t\t\t\n\t\t\t<h1 class="page-title">\n\t\t\t\t${escapeHtml(term!.name)}\t\t\t</h1>\n\n\t\t\t<div class="taxonomy-description"><p>${term!.description}</p>\n</div>\t\t</header>`; description = term!.description; }
+else if (kind === "tag") { bodyClass = `archive tag tag-${slug} tag-${term!.id} ${common}`; title = `Tag: ${term!.name}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = `<header class="page-header" aria-label="Page">\n\t\t\t\n\t\t\t<h1 class="page-title">\n\t\t\t\t${escapeHtml(term!.name)}\t\t\t</h1>\n\t\t\t\t\t</header>`; }
+else { const a = authors[slug!]; bodyClass = `archive author author-${slug} author-${authorId ?? 0} ${common}`; title = `Author: ${a?.name ?? slug}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = authorArchiveHeader(slug!); description = a?.bio ?? null; }
+
+// The homepage shows the newest post in the full-width "first post" template on page 1 only; paged views are plain cards.
+const cards = kind === "home" && page === 1 ? [firstPostHtml(ids[0]), ...ids.slice(1).map(cardHtml)] : ids.map(cardHtml);
+const mainHtml = `<div class="generate-columns-container ">${header}${cards.join("\n")}</div><!-- .generate-columns-contaier -->\n${kind === "home" && page === 1 ? moreList() : ""}\n${archiveNav(base, page, pages)}`;
+---
+<SE title={title} description={description} canonical={canonical} bodyClass={bodyClass} robots="max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+	<Fragment set:html={mainHtml} />
+	<Fragment slot="sidebar" set:html={kind === "home" ? sidebarHome : sidebar} />
+	{kind === "home" && page === 1 && <Fragment slot="after" set:html={seMost + seBooks} />}
+</SE>

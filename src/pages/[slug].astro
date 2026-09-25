@@ -20,7 +20,9 @@ if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
 const fx = fixtureForSlug(slug);
 const title = post.data.title as string;
 const dek = (post.data.excerpt as string) ?? "";
-const bylines = ((post.data.bylines ?? []) as { byline: { slug: string; displayName: string } }[]).map((c) => authorFor(c.byline.slug, c.byline.displayName));
+// Bylines: the entry's bylines once the migration attaches co-authors; until then the live fixture carries all of them.
+const entryBylines = ((post.data.bylines ?? []) as { byline: { slug: string; displayName: string } }[]).map((c) => ({ slug: c.byline.slug, name: c.byline.displayName }));
+const bylines = ((fx?.bylines?.length ?? 0) > entryBylines.length ? fx!.bylines : entryBylines).map((b) => authorFor(b.slug, b.name));
 const fi = post.data.featured_image as { src?: string } | undefined;
 const heroBg = fx?.heroBg ?? (fi?.src ? fi.src.replace(/\.(jpe?g|png)$/i, ".webp") : "");
 const dateStr = post.data.publishedAt ? ordinalDate(post.data.publishedAt as Date) : "";
@@ -29,8 +31,9 @@ const categories = ((post.data.terms as { category?: { slug: string; label: stri
 // Body: Portable Text -> WordPress-shaped HTML, then the injected furniture in the live order.
 const elements = splitTopLevel(renderBlocks(post.data.content as never[]));
 const n = paragraphCount(elements);
-let parts = injectAfterParagraph(elements, Math.min(5, Math.max(1, n - 1)), fx?.relInline ?? "");
-parts = injectAfterParagraph(parts, Math.min(10, Math.max(1, n - 1)), newsletterBox);
+// Measured on 100 live pages: related widget after paragraph 5, newsletter box after paragraph 10; shorter posts get them after the last paragraph.
+let parts = injectAfterParagraph(elements, Math.min(5, n), fx?.relInline ?? "");
+parts = injectAfterParagraph(parts, Math.min(10, n), newsletterBox);
 const bodyHtml = parts.join("\n") + `\n<div class="ns-content-marker" style="display: none;"></div>`;
 // On the live site a stray closing tag ends .entry-content right after the Novashare marker, so the author box,
 // partner banner and membership box are siblings of .entry-content inside .inside-article. Reproduced deliberately.
@@ -40,7 +43,7 @@ const canonical = `https://www.socialeurope.eu/${slug}`;
 const bodyClass = fx?.bodyClass ?? `wp-singular post-template-default single single-post postid-${fx?.id ?? 0} single-format-standard wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-center slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover featured-image-active`;
 const articleClass = fx?.articleClass ?? `post-${fx?.id ?? 0} post type-post status-publish format-standard has-post-thumbnail hentry ${categories.map((c) => "category-" + c.slug).join(" ")} no-featured-image-padding`;
 ---
-<SE share={floatingShare(title, canonical)} title={`${title} - Social Europe`} description={dek} canonical={canonical} bodyClass={bodyClass} image={fi?.src} type="article" content={{ collection: "posts", id: post.data.id as string, slug }}>
+<SE mergedHeader share={floatingShare(title, canonical)} title={`${title} - Social Europe`} description={dek} canonical={canonical} bodyClass={bodyClass} image={fi?.src} type="article" content={{ collection: "posts", id: post.data.id as string, slug }}>
 	<Fragment slot="hero">
 		<div class="gb-element-69a233b0 se-hero" style={`--inline-bg-image: url('${heroBg}') `}>
 <div class="gb-element-b51a43b9 se-hero__inner">

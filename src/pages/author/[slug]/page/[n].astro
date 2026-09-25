@@ -1,0 +1,5 @@
+---
+import Listing from "../../../../se/Listing.astro";
+const n = Number(Astro.params.n); if (!Number.isInteger(n) || n < 2) return new Response(null, { status: 404 });
+---
+<Listing kind="author" slug={Astro.params.slug!} page={n} />
