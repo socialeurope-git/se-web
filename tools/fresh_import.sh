@@ -34,3 +34,7 @@ for WXR in "$@"; do
   curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -F "file=@$WXR;type=text/xml" -F 'config={"postTypeMappings":{"post":{"collection":"posts","enabled":true},"page":{"collection":"pages","enabled":true}},"skipExisting":true}' http://127.0.0.1:4321/_emdash/api/import/wordpress/execute \
    | python3 -c "import json,sys;r=json.load(sys.stdin);d=r.get('data') or {};print('$WXR: imported',d.get('imported'),'skipped',d.get('skipped'),'errors',len(d.get('errors',[])),(d['errors'][0]['error'][:100] if d.get('errors') else ''), '' if r.get('success') else r)"
 done
+
+# Henning's own admin account: the dev server prints the invite e-mail with the accept link (no mail provider locally)
+curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d '{"email":"h.meyer@socialeurope.eu","name":"Henning Meyer","role":50}' http://127.0.0.1:4321/_emdash/api/auth/invite >/dev/null
+echo "invite for h.meyer@socialeurope.eu requested: open the accept link from the dev-server log (search 'invite/accept'), then register a passkey"
