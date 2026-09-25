@@ -39,6 +39,19 @@ for (const m of html.matchAll(/<aside id="(block-\d+)" class="[^"]*">([\s\S]*?)<
 			}
 		}
 	}
+	// image blocks: the HTML converter keeps the WordPress URL as the asset; point them at the imported media item
+	// (same node shape as EmDash's own imported images: asset._ref = media id, asset.url = media URL, original width/height)
+	for (const b of blocks) {
+		if (b._type !== "image" || !b.asset?.url) continue;
+		const orig = b.asset.url.replace(SIZE, "");
+		const item = media[orig] ?? media[b.asset.url];
+		if (!item) { console.warn(`no media item for ${b.asset.url}`); continue; }
+		const mi = await api("GET", `/_emdash/api/media/${item.mediaId}`); const rec = mi.item ?? mi;
+		b.asset = { _type: "reference", _ref: item.mediaId, url: item.newUrl };
+		if (rec.width && rec.height) { b.width = rec.width; b.height = rec.height; }
+		if (rec.blurhash) b.blurhash = rec.blurhash;
+		if (rec.dominantColor) b.dominantColor = rec.dominantColor;
+	}
 	ads.push({ id: m[1], title, blocks });
 }
 console.log(ads.map((a) => `${a.id} ${a.title}: ${a.blocks.map((b) => b._type + (b.style ? ":" + b.style : "") + (b.listItem ? "/li" : "")).join(" ")}`).join("\n"));

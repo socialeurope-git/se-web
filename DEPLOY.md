@@ -35,4 +35,4 @@ After the first start: Admin → Plugins → SE Ops → settings: Bunny API key,
 ## Pull zone (staging 6691312, later production 5962195)
 
 - `IgnoreQueryStrings` must be **off**: Astro's image endpoint keys every size on the query string (`/_image?href=…&w=…&h=…&f=…`).
-- Edge rule "Override Cache Time" 30 days for `*/_image?*` and `*/_emdash/api/media/file/*`: EmDash sends `max-age=0, must-revalidate` for media, the CDN would otherwise fetch every image from the pod. Storage keys are immutable ULIDs, so long caching is safe.
+- Edge rule "Override Cache Time" 30 days, URL triggers `*/_image*` and `*/_emdash/api/media/file/*` (Bunny's URL trigger does not see the query string, so `*/_image?*` never matches): EmDash sends `max-age=0, must-revalidate` for media and transforms, the CDN would otherwise fetch every image from the pod. Storage keys are immutable ULIDs, so long caching is safe. Verified on staging: `cdn-cache: HIT` for transforms and originals.
