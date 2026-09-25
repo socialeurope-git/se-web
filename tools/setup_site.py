@@ -22,8 +22,15 @@ def api(method, path, body=None, ok404=False):
         raise SystemExit(f"{method} {path} -> {e.code}: {e.read()[:300]}")
 
 # 1. site settings (POST = update)
-r = api("POST", "/_emdash/api/settings", {"title": "Social Europe", "tagline": "Politics, Economy and Employment & Labour", "url": SITE})
-print("settings:", r.get("data"))
+fav = None
+mi = f"{ROOT}/archive/media-import.json"
+if os.path.exists(mi):
+    for it in json.load(open(mi))["imported"]:
+        if it["originalUrl"].endswith("/2025/10/cropped-SE-scaled-1.png"): fav = it["mediaId"]
+body = {"title": "Social Europe", "tagline": "Politics, Economy and Employment & Labour", "url": SITE}
+if fav: body["favicon"] = {"mediaId": fav, "alt": "Social Europe"}
+r = api("POST", "/_emdash/api/settings", body)
+print("settings:", {k: v for k, v in (r.get("data") or {}).items() if k != "seo"})
 
 # 2. menus
 MENUS = {

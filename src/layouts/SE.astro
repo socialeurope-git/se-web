@@ -14,7 +14,6 @@ import nsHighlight from "../se/partials/ns-highlight.html?raw";
 import gpScripts from "../se/partials/gp-inline-scripts.html?raw";
 import awrm from "../se/partials/awrm-rotation.html?raw";
 import plausible from "../se/partials/head-plausible.html?raw";
-import icons from "../se/partials/head-icons.html?raw";
 
 interface Props {
 	title: string; description?: string | null; canonical: string; image?: string | null; type?: "website" | "article"; robots?: string | null;
@@ -49,7 +48,6 @@ const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "cu
 {feed && <link rel="alternate" type="application/rss+xml" title={`${siteName} » ${feed.title}`} href={feed.href} />}
 <link rel="stylesheet" href={`/se/frozen-${css}.css`} />
 <Fragment set:html={plausible} />
-<Fragment set:html={icons} />
 </head>
 <body class={bodyClass}>
 <EmDashBodyStart page={pageCtx} />

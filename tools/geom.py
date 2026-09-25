@@ -9,7 +9,7 @@ async def main():
     async with async_playwright() as pw:
         b=await pw.chromium.launch(); res={}
         for name,url in (('A',A),('B',B)):
-            p=await b.new_page(viewport={'width':W,'height':900}); await p.goto(url,wait_until='load'); await p.add_style_tag(content='#right-sidebar{visibility:hidden}'); await p.wait_for_timeout(800); res[name]=await p.evaluate(JS,[ROOT,DEPTH]); await p.close()
+            p=await b.new_page(viewport={'width':W,'height':900}); await p.goto(url,wait_until='load'); await p.add_style_tag(content='#right-sidebar{visibility:hidden}'+__import__('os').environ.get('EXTRA_MASK','')); await p.wait_for_timeout(800); res[name]=await p.evaluate(JS,[ROOT,DEPTH]); await p.close()
         await b.close()
     a,bb=res['A'],res['B']; print(f'elements A={len(a)} B={len(bb)}'); shown=0
     for x,y in zip(a,bb):

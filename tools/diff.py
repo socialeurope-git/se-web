@@ -18,7 +18,8 @@ async def shoot(page, url, out):
     await page.evaluate('window.scrollTo(0,0)')
     try: await page.wait_for_load_state('networkidle', timeout=8000)
     except Exception: pass
-    try: await page.evaluate("Promise.all([...document.images].map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; })))")   # lazy images must be in before the shot
+    # lazy images must be in before the shot; images inside display:none masks never load, so only visible ones count and a 10 s cap protects the run
+    try: await page.evaluate("Promise.race([new Promise(r => setTimeout(r, 10000)), Promise.all([...document.images].filter(i => i.getClientRects().length).map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; })))])")
     except Exception: pass
     await page.wait_for_timeout(400); await page.screenshot(path=out, full_page=True, animations='disabled')
 def compare(a, b, out):

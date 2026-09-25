@@ -57,7 +57,10 @@ def main():
     def status_of(eid):
         d = sqlite3.connect(f"file:{ROOT/'data.db'}?mode=ro", uri=True); r = d.execute("select status, draft_revision_id from ec_posts where id=?", (eid,)).fetchone(); d.close(); return r
 
-    # 1. bylines
+    # 1. bylines (custom field photo_credit must exist: created by fresh_import.sh / setup below)
+    fields = {f["slug"] for f in (api("GET", "/_emdash/api/admin/byline-fields")["data"].get("items") or [])}
+    if "photo_credit" not in fields:
+        api("POST", "/_emdash/api/admin/byline-fields", {"slug": "photo_credit", "label": "Photo credit (listed on /photo-credits)", "type": "boolean"}); print("byline field photo_credit created")
     by_slug = {}; cursor = None
     while True:
         d = api("GET", "/_emdash/api/admin/bylines?limit=100" + (f"&cursor={cursor}" if cursor else ""))["data"]
@@ -77,12 +80,13 @@ def main():
         return media_by_url.get(u)
     created = updated = 0
     for slug, au in authors.items():
-        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": True, "avatarMediaId": avatar_media(au)}
+        credit = "se-avatar-credit" in (au.get("avatarBoxHtml") or "")   # portrait listed on /photo-credits (byline field photo_credit)
+        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": True, "avatarMediaId": avatar_media(au), "customFields": {"photo_credit": credit}}
         ex = by_slug.get(slug)
         if not ex:
             print("create", slug); created += 1
             if not a.dry_run: by_slug[slug] = api("POST", "/_emdash/api/admin/bylines", body)["data"]
-        elif (ex.get("bio") or None) != body["bio"] or (ex.get("websiteUrl") or None) != body["websiteUrl"] or ex["displayName"] != au["name"] or (ex.get("avatarMediaId") or None) != body["avatarMediaId"]:
+        elif (ex.get("bio") or None) != body["bio"] or (ex.get("websiteUrl") or None) != body["websiteUrl"] or ex["displayName"] != au["name"] or (ex.get("avatarMediaId") or None) != body["avatarMediaId"] or bool((ex.get("customFields") or {}).get("photo_credit")) != credit:
             updated += 1
             if not a.dry_run: api("PUT", f"/_emdash/api/admin/bylines/{ex['id']}", {k: v for k, v in body.items() if k != "slug"})
     print(f"bylines: {created} created, {updated} updated, {len(by_slug)} total, {sum(1 for a in authors.values() if avatar_media(a))} with portrait media")
