@@ -1,0 +1,93 @@
+{
+  "id": "se-ops",
+  "version": "0.1.0",
+  "declaredAccess": {
+    "content": {
+      "read": {}
+    },
+    "network": {
+      "request": {
+        "allowedHosts": [
+          "api.bunny.net",
+          "uptime.webconsole.app"
+        ]
+      }
+    }
+  },
+  "capabilities": [
+    "content:read",
+    "network:request"
+  ],
+  "allowedHosts": [
+    "api.bunny.net",
+    "uptime.webconsole.app"
+  ],
+  "storage": {},
+  "hooks": [
+    "plugin:activate",
+    "cron",
+    "content:afterPublish",
+    "content:afterUnpublish",
+    "content:afterRestore",
+    "content:afterDelete"
+  ],
+  "routes": [
+    {
+      "name": "admin",
+      "permission": "plugins:manage"
+    },
+    {
+      "name": "purge-all",
+      "methods": [
+        "POST"
+      ],
+      "permission": "plugins:manage"
+    },
+    {
+      "name": "heartbeat",
+      "methods": [
+        "POST"
+      ],
+      "permission": "plugins:manage"
+    }
+  ],
+  "admin": {
+    "settingsSchema": {
+      "site_url": {
+        "label": "Site URL",
+        "description": "Public origin whose URLs are purged",
+        "type": "string",
+        "default": "https://www.socialeurope.eu"
+      },
+      "bunny_api_key": {
+        "label": "Bunny account API key",
+        "description": "Used for purge requests (api.bunny.net)",
+        "type": "secret"
+      },
+      "pull_zone_id": {
+        "label": "Bunny pull zone ID",
+        "description": "For the full-zone purge button (e.g. 5962195)",
+        "type": "string"
+      },
+      "kuma_push_url": {
+        "label": "Uptime Kuma push URL",
+        "description": "Heartbeat every 5 minutes; leave empty to disable",
+        "type": "string"
+      }
+    },
+    "pages": [
+      {
+        "path": "/ops",
+        "label": "SE Ops",
+        "icon": "settings"
+      }
+    ],
+    "widgets": [
+      {
+        "id": "status",
+        "title": "SE Ops",
+        "size": "half"
+      }
+    ]
+  }
+}
