@@ -19,6 +19,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
+        id: build
         with:
           context: .
           platforms: linux/amd64
@@ -28,8 +29,14 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # Bunny Magic Containers app "SE EmDash" pulls :latest on deploy (imagePullPolicy always)
+      # Bunny Magic Containers app "SE EmDash": pin the container template to the digest just built, then deploy
+      # (a plain deploy re-runs the digest already pinned in the template, it does not re-resolve :latest)
       - name: Deploy on Bunny
+        env:
+          BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          curl -sf -X POST -H "AccessKey: ${{ secrets.BUNNY_API_KEY }}" -H "Accept: application/json" \
+          curl -sf -X PATCH -H "AccessKey: $BUNNY_API_KEY" -H "Accept: application/json" -H "Content-Type: application/json" \
+            -d "{\"imageDigest\": \"$DIGEST\"}" https://api.bunny.net/mc/apps/M2IE2fr9dVHjjff/containers/M2IE2fr9dVHjjff-CXd3 >/dev/null && echo "template pinned to $DIGEST"
+          curl -sf -X POST -H "AccessKey: $BUNNY_API_KEY" -H "Accept: application/json" \
             https://api.bunny.net/mc/apps/M2IE2fr9dVHjjff/deploy && echo "deploy triggered"
