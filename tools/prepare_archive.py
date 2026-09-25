@@ -5,6 +5,12 @@ Outputs: archive/wxr-<name>.xml (WXR with block-comment wrapping so the converte
          src/se/data/authors.json (slug -> name, bio, url, avatarHtml), archive/fixtures/<id>.json (per-post live widgets)
 Usage  : prepare_archive.py <archive_dir> <live_dir> <name> [ids.json]"""
 import json, os, re, sys, gzip, html
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+BERLIN=ZoneInfo('Europe/Berlin')
+def to_gmt(local):
+    """WordPress local time (site timezone Europe/Berlin) -> UTC string. Old posts carry a wrong date_gmt, the local date is the truth."""
+    d=datetime.fromisoformat(local).replace(tzinfo=BERLIN); return d.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 from xml.sax.saxutils import escape
 A=sys.argv[1]; LIVE=sys.argv[2]; NAME=sys.argv[3]; only=set(json.load(open(sys.argv[4]))) if len(sys.argv)>4 else None
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -143,15 +149,31 @@ for p in sel:
     fm=p.get('featured_media'); fmedia=media.get(fm)
     if fmedia and fm not in att_seen:
         att_seen.add(fm); url=fmedia['source_url']
-        items.append(f'<item><title>{escape(os.path.basename(url))}</title><link>{escape(url)}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">{escape(url)}</guid><content:encoded>{cdata("")}</content:encoded><excerpt:encoded>{cdata("")}</excerpt:encoded><wp:post_id>{fm}</wp:post_id><wp:post_date>{p["date"].replace("T"," ")}</wp:post_date><wp:post_date_gmt>{p["date_gmt"].replace("T"," ")}</wp:post_date_gmt><wp:post_name>{escape(os.path.splitext(os.path.basename(url))[0])}</wp:post_name><wp:status>inherit</wp:status><wp:post_parent>{pid}</wp:post_parent><wp:post_type>attachment</wp:post_type><wp:attachment_url>{escape(url)}</wp:attachment_url><wp:postmeta><wp:meta_key>_wp_attachment_image_alt</wp:meta_key><wp:meta_value>{cdata(fmedia.get("alt_text") or "")}</wp:meta_value></wp:postmeta></item>')
+        items.append(f'<item><title>{escape(os.path.basename(url))}</title><link>{escape(url)}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">{escape(url)}</guid><content:encoded>{cdata("")}</content:encoded><excerpt:encoded>{cdata("")}</excerpt:encoded><wp:post_id>{fm}</wp:post_id><wp:post_date>{to_gmt(p["date"])}</wp:post_date><wp:post_date_gmt>{to_gmt(p["date"])}</wp:post_date_gmt><wp:post_name>{escape(os.path.splitext(os.path.basename(url))[0])}</wp:post_name><wp:status>inherit</wp:status><wp:post_parent>{pid}</wp:post_parent><wp:post_type>attachment</wp:post_type><wp:attachment_url>{escape(url)}</wp:attachment_url><wp:postmeta><wp:meta_key>_wp_attachment_image_alt</wp:meta_key><wp:meta_value>{cdata(fmedia.get("alt_text") or "")}</wp:meta_value></wp:postmeta></item>')
     if fmedia: meta=f'<wp:postmeta><wp:meta_key>_thumbnail_id</wp:meta_key><wp:meta_value>{fm}</wp:meta_value></wp:postmeta>'
     items.append(f'''<item><title>{cdata(title)}</title><link>{escape(p['link'])}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">https://www.socialeurope.eu/?p={pid}</guid>
-<content:encoded>{cdata(content)}</content:encoded><excerpt:encoded>{cdata(dek)}</excerpt:encoded><wp:post_id>{pid}</wp:post_id><wp:post_date>{p['date'].replace('T',' ')}</wp:post_date><wp:post_date_gmt>{p['date_gmt'].replace('T',' ')}</wp:post_date_gmt><wp:post_modified>{p['modified'].replace('T',' ')}</wp:post_modified><wp:comment_status>closed</wp:comment_status><wp:post_name>{escape(p['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>0</wp:post_parent><wp:post_type>post</wp:post_type>{t}{meta}</item>''')
+<content:encoded>{cdata(content)}</content:encoded><excerpt:encoded>{cdata(dek)}</excerpt:encoded><wp:post_id>{pid}</wp:post_id><wp:post_date>{to_gmt(p['date'])}</wp:post_date><wp:post_date_gmt>{to_gmt(p['date'])}</wp:post_date_gmt><wp:post_modified>{to_gmt(p['modified'])}</wp:post_modified><wp:post_modified_gmt>{to_gmt(p['modified'])}</wp:post_modified_gmt><wp:comment_status>closed</wp:comment_status><wp:post_name>{escape(p['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>0</wp:post_parent><wp:post_type>post</wp:post_type>{t}{meta}</item>''')
     # per-post fixtures from the live page (widgets whose data will later come from services)
     rel_inline,_,_=balanced(entry,r'<aside class="se-rel-inline'); rel_band,_,_=balanced(h,r'<section class="se-rel-band"')
     hero_bg=re.search(r'--inline-bg-image: url\(\'([^\']+)\'\)',h)
     head_title=re.search(r'<title>(.*?)</title>',h,re.S)
-    fx={'id':pid,'slug':p['slug'],'bylines':[{'slug':s,'name':n} for s,n,_ in bylines],'heroBg':hero_bg.group(1) if hero_bg else None,'relInline':rel_inline,'relBand':rel_band,'title':html.unescape(head_title.group(1).strip()) if head_title else title,'dek':dek,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1]}
+    # SEO facts from the live head: author Person @id (TSF hashes the user e-mail, not reproducible), image size, modified date
+    lds=[m.group(1) for m in re.finditer(r'<script type="application/ld\+json"[^>]*>(.*?)</script>',h,re.S)]
+    personId=None; personDesc=None; imgw=imgh=None; modified=None; wordcount=None; lddesc=None; ldpub=None; ldhead=None; ldkw=None
+    for ld in lds:
+        try: d=json.loads(ld)
+        except Exception: continue
+        if '@graph' in d:
+            for node in d['@graph']:
+                if node.get('@type')=='WebPage' and isinstance(node.get('author'),dict): personId=node['author'].get('@id'); personDesc=node['author'].get('description')
+        elif d.get('@type')=='NewsArticle':
+            img=d.get('image') or {}; imgw,imgh=img.get('width'),img.get('height'); modified=d.get('dateModified'); wordcount=d.get('wordCount'); lddesc=d.get('description'); ldpub=d.get('datePublished'); ldhead=d.get('headline'); ldkw=d.get('keywords')
+    if bylines and personId:
+        a=authors.get(bylines[0][0])
+        if a is not None and not a.get('personId'): a['personId']=personId; a['personDesc']=personDesc
+    ogm=re.search(r'<meta property="article:modified_time" content="([^"]*)"',h)
+    mdesc=re.search(r'<meta name="description" content="([^"]*)"',h); ogdesc=re.search(r'<meta property="og:description" content="([^"]*)"',h); ogt=re.search(r'<meta property="og:title" content="([^"]*)"',h)
+    fx={'id':pid,'slug':p['slug'],'bylines':[{'slug':s,'name':n} for s,n,_ in bylines],'heroBg':hero_bg.group(1) if hero_bg else None,'relInline':rel_inline,'relBand':rel_band,'title':html.unescape(head_title.group(1).strip()) if head_title else title,'dek':dek,'imageW':imgw,'imageH':imgh,'modified':modified,'modifiedDay':ogm.group(1) if ogm else None,'wordCount':wordcount,'ldDescription':lddesc,'ldPublished':ldpub,'ldHeadline':ldhead,'ldKeywords':ldkw,'ogTitle':html.unescape(ogt.group(1)) if ogt else None,'description':html.unescape(mdesc.group(1)) if mdesc else None,'ogDescription':html.unescape(ogdesc.group(1)) if ogdesc else None,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1]}
     json.dump(fx,open(f'{A}/fixtures/{pid}.json','w')); fixtures_written+=1
 # pages: body from the rendered live page (archive/live-pages/<slug>.html), fixture with the template wrappers
 PAGES_DIR=os.path.join(os.path.dirname(A),'archive','live-pages') if os.path.basename(A)=='archive' else os.path.join(A,'live-pages')
@@ -167,9 +189,12 @@ for pg in pages:
             depth+= -1 if t.group(1) else 1
             if depth==0: end=t.start(); break
         body=ec[:end].strip()
-        intro=re.search(r'<section class="se-ed-intro">(.*?)</section>',h,re.S); cta=re.search(r'<section class="se-ed-cta">.*?</section>',h,re.S)
+        intro=re.search(r'<section class="se-ed-intro">(.*?)</section>',h,re.S)
+        after_article=h[h.find('</article>'):]                       # a CTA inside the content is part of the content, not a page-level block
+        cta=re.search(r'<section class="se-ed-cta">.*?</section>',after_article,re.S)
         fi=re.search(r'<div class="featured-image page-header-image[^"]*">.*?</div>',h,re.S)
-        fx={'id':pg['id'],'slug':pg['slug'],'title':title,'template':pg.get('template') or 'default','bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),
+        ogi=re.search(r'<meta property="og:image" content="([^"]*)"',h); ogw=re.search(r'<meta property="og:image:width" content="(\d+)"',h); ogh=re.search(r'<meta property="og:image:height" content="(\d+)"',h); oga=re.search(r'<meta property="og:image:alt" content="([^"]*)"',h); desc=re.search(r'<meta name="description" content="([^"]*)"',h); ogd=re.search(r'<meta property="og:description" content="([^"]*)"',h)
+        fx={'id':pg['id'],'ogDescription':html.unescape(ogd.group(1)) if ogd else None,'slug':pg['slug'],'title':title,'template':pg.get('template') or 'default','ogImage':html.unescape(ogi.group(1)) if ogi else None,'ogImageW':int(ogw.group(1)) if ogw else None,'ogImageH':int(ogh.group(1)) if ogh else None,'ogImageAlt':html.unescape(oga.group(1)) if oga else None,'description':html.unescape(desc.group(1)) if desc else None,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),
             'introHtml':intro.group(0) if intro else None,'ctaHtml':cta.group(0) if cta else None,'featuredHtml':fi.group(0) if fi else None,
             'headTitle':html.unescape(re.search(r'<title>(.*?)</title>',h,re.S).group(1).strip()),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1],'hasSidebar':'id="right-sidebar"' in h}
         json.dump(fx,open(f'{A}/fixtures/page-{pg["slug"]}.json','w'))

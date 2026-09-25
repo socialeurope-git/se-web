@@ -4,6 +4,10 @@ import SE from "../layouts/SE.astro";
 import { listPosts, cardHtml, firstPostHtml, moreList, archiveNav, authorArchiveHeader, type ListingKind } from "./listing";
 import { authors } from "./data";
 import { escapeHtml } from "./format";
+import { renderHead } from "./head";
+import fs from "node:fs";
+import path from "node:path";
+const termSeo: Record<string, string> = (() => { const f = path.join(process.cwd(), "archive", "term-seo.json"); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : {}; })();
 import sidebar from "./partials/sidebar.html?raw";
 import sidebarHome from "./partials/sidebar-home.html?raw";
 import seMost from "./partials/home-se-most.html?raw";
@@ -15,7 +19,7 @@ const { ids, total, pages, term, authorId } = listPosts(kind, slug, page);
 if ((kind !== "home" && !ids.length && page === 1) || page > pages) return new Response(null, { status: 404 });
 
 const base = kind === "home" ? "https://www.socialeurope.eu" : kind === "author" ? `https://www.socialeurope.eu/author/${slug}` : `https://www.socialeurope.eu/${kind}/${slug}`;
-const canonical = page === 1 ? base : `${base}/page/${page}`;
+const canonical = page === 1 ? (kind === "home" ? `${base}/` : base) : `${base}/page/${page}`;
 const common = "wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-left generate-columns-activated slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover";
 let bodyClass = "", title = "", header = "", description: string | null = null;
 if (kind === "home") { bodyClass = `home blog${page > 1 ? ` paged` : ""} ${common}${page > 1 ? ` paged-${page}` : ""}`; title = page > 1 ? `Social Europe - Page ${page}` : "Social Europe"; description = "Social Europe is an award-winning digital media publisher driven by the core values of freedom, sustainability and equality."; }
@@ -24,10 +28,19 @@ else if (kind === "tag") { bodyClass = `archive tag tag-${slug} tag-${term!.id} 
 else { const a = authors[slug!]; bodyClass = `archive author author-${slug} author-${authorId ?? 0} ${common}`; title = `Author: ${a?.name ?? slug}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = authorArchiveHeader(slug!); description = a?.bio ?? null; }
 
 // The homepage shows the newest post in the full-width "first post" template on page 1 only; paged views are plain cards.
+const SITE_DESC = "Social Europe is an award-winning digital publisher offering freely accessible expert analysis and informed debate on political, economic and social issues.";
+const prev = page <= 1 ? null : page === 2 ? (kind === "home" ? "https://www.socialeurope.eu" : base) : `${base}/page/${page - 1}`;
+const next = page < pages ? `${base}/page/${page + 1}` : null;
+const a = kind === "author" ? authors[slug!] : null;
+const head = renderHead(kind === "home"
+	? { kind: "home", title, ogTitle: title, canonical, description: SITE_DESC, prev, next, publisherFull: false, aboutOrg: true }
+	: kind === "author"
+	? { kind: "author", title, ogTitle: `Author: ${a?.name ?? slug}`, ogType: "profile", canonical, description: a?.bio ?? null, prev, next, pageType: "CollectionPage", breadcrumbs: [{ name: `Author: ${a?.name ?? slug}` }], feed: { title: `Posts by ${a?.name ?? slug} Feed`, href: `${base}/feed` }, jsonLink: authorId ? `https://www.socialeurope.eu/wp-json/wp/v2/users/${authorId}` : null, publisherFull: true }
+	: { kind, title, ogTitle: `${kind === "category" ? "Category" : "Tag"}: ${term!.name}`, canonical, description: kind === "category" ? (termSeo[slug!] ?? term!.description) : null, prev, next, pageType: "CollectionPage", breadcrumbs: [{ name: `${kind === "category" ? "Category" : "Tag"}: ${term!.name}` }], feed: { title: `${term!.name} ${kind === "category" ? "Category" : "Tag"} Feed`, href: `${base}/feed` }, jsonLink: `https://www.socialeurope.eu/wp-json/wp/v2/${kind === "category" ? "categories" : "tags"}/${term!.id}`, publisherFull: true });
 const cards = kind === "home" && page === 1 ? [firstPostHtml(ids[0]), ...ids.slice(1).map(cardHtml)] : ids.map(cardHtml);
 const mainHtml = `<div class="generate-columns-container ">${header}${cards.join("\n")}</div><!-- .generate-columns-contaier -->\n${kind === "home" && page === 1 ? moreList() : ""}\n${archiveNav(base, page, pages)}`;
 ---
-<SE title={title} description={description} canonical={canonical} bodyClass={bodyClass} robots="max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<SE head={head} title={title} bodyClass={bodyClass}>
 	<Fragment set:html={mainHtml} />
 	<Fragment slot="sidebar" set:html={kind === "home" ? sidebarHome : sidebar} />
 	{kind === "home" && page === 1 && <Fragment slot="after" set:html={seMost + seBooks} />}

@@ -6,7 +6,9 @@ import { renderBlocks, splitTopLevel, injectAfterParagraph, paragraphCount } fro
 import { authorFor, fixtureForSlug } from "../se/data";
 import { heroByline, authorBox } from "../se/article";
 import { floatingShare } from "../se/share";
-import { ordinalDate, escapeHtml } from "../se/format";
+import { renderHead } from "../se/head";
+import { cardHtml } from "../se/listing";
+import { ordinalDate, escapeHtml, berlinIso } from "../se/format";
 import sidebar from "../se/partials/sidebar.html?raw";
 import newsletterBox from "../se/partials/newsletter-box.html?raw";
 import partnerBanner from "../se/partials/partner-banner.html?raw";
@@ -33,6 +35,7 @@ const bylines = ((fx?.bylines?.length ?? 0) > entryBylines.length ? fx!.bylines 
 const fi = P.data.featured_image as { src?: string } | undefined;
 const heroBg = fx?.heroBg ?? (fi?.src ? fi.src.replace(/\.(jpe?g|png)$/i, ".webp") : "");
 const dateStr = P.data.publishedAt ? ordinalDate(P.data.publishedAt as Date) : "";
+const tagsOf = ((((P.data.terms as { tag?: { label: string }[] } | undefined)?.tag) ?? []).map((t) => t.label));
 const categories = ((P.data.terms as { category?: { slug: string; label: string }[] } | undefined)?.category) ?? [];
 
 // Body: Portable Text -> WordPress-shaped HTML, then the injected furniture in the live order.
@@ -49,10 +52,25 @@ const bodyHtml = parts.join("\n") + `\n<div class="ns-content-marker" style="dis
 const afterContent = bylines.map(authorBox).join("") + partnerBanner + membership;
 
 const canonical = `https://www.socialeurope.eu/${slug}`;
+const pubDay = P.data.publishedAt ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(P.data.publishedAt as Date) : null;
+const pubIso = P.data.publishedAt ? berlinIso(P.data.publishedAt as Date) : "";
+const wordCount = fx?.wordCount ?? renderBlocks((P.data.content ?? []) as never[]).replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
+const cardImg = fx ? cardHtml(fx.id).match(/<img [^>]*alt="([^"]*)"/)?.[1] : undefined;   // the attachment alt text (straight apostrophes)
+const imageAlt = ((fi as { alt?: string } | undefined)?.alt || (cardImg ? cardImg.replace(/&#039;/g, "'").replace(/&amp;/g, "&") : title));
+const head = pageEntry ? "" : renderHead({
+	// Live values win where WordPress/TSF derived them (custom titles, texturized quotes, auto excerpts); the entry's own fields are the fallback for new content.
+	kind: "article", title: fx?.title ?? `${title} - Social Europe`, ogTitle: fx?.ogTitle ?? title, ogType: "article", canonical, description: fx?.description || dek || null, ogDescription: fx?.ogDescription || dek || null,
+	image: fi?.src ? { url: fi.src, w: fx?.imageW ?? 1280, h: fx?.imageH ?? 720, alt: imageAlt } : null,
+	published: pubDay, modified: fx?.modifiedDay ?? pubDay, oembedUrl: canonical, jsonLink: fx ? `https://www.socialeurope.eu/wp-json/wp/v2/posts/${fx.id}` : null,
+	breadcrumbs: [...(categories[0] ? [{ item: `https://www.socialeurope.eu/category/${categories[0].slug}`, name: `Category: ${categories[0].label}` }] : []), { name: fx?.ogTitle ?? title }],
+	author: bylines[0] ? { name: bylines[0].name, personId: (bylines[0] as { personId?: string }).personId ?? null, desc: (bylines[0] as { personDesc?: string }).personDesc ?? null } : null,
+	readAction: true, publisherFull: true,
+	newsArticle: { url: canonical, headline: fx?.ldHeadline ?? title.replace(/’/g, "&#8217;").replace(/‘/g, "&#8216;").replace(/“/g, "&#8220;").replace(/”/g, "&#8221;"), datePublished: pubIso, dateModified: fx?.modified ?? pubIso, authors: bylines.map((b) => ({ name: b.name, url: b.url })), description: fx?.ldDescription ?? dek, image: fi?.src ? { url: fi.src, w: fx?.imageW ?? 1280, h: fx?.imageH ?? 720 } : null, sections: categories.map((c) => c.label), keywords: fx?.ldKeywords ?? (tagsOf.length ? (tagsOf.length === 1 ? tagsOf[0] : tagsOf) : null), wordCount },
+});
 const bodyClass = fx?.bodyClass ?? `wp-singular post-template-default single single-post postid-${fx?.id ?? 0} single-format-standard wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-center slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover featured-image-active`;
 const articleClass = fx?.articleClass ?? `post-${fx?.id ?? 0} post type-post status-publish format-standard has-post-thumbnail hentry ${categories.map((c) => "category-" + c.slug).join(" ")} no-featured-image-padding`;
 ---
-{pageEntry ? <Page page={pageEntry} slug={slug} /> : <SE mergedHeader share={floatingShare(title, canonical)} title={`${title} - Social Europe`} description={dek} canonical={canonical} bodyClass={bodyClass} image={fi?.src} type="article" content={{ collection: "posts", id: P.data.id as string, slug }}>
+{pageEntry ? <Page page={pageEntry} slug={slug} /> : <SE head={head} mergedHeader share={floatingShare(title, canonical)} title={`${title} - Social Europe`} bodyClass={bodyClass}>
 	<Fragment slot="hero">
 		<div class="gb-element-69a233b0 se-hero" style={`--inline-bg-image: url('${heroBg}') `}>
 <div class="gb-element-b51a43b9 se-hero__inner">

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import authorsJson from "./data/authors.json";
 
-export type Author = { slug: string; name: string; bio: string; url: string; avatarHtml: string };
+export type Author = { slug: string; name: string; bio: string; url: string; avatarHtml: string; avatarBoxHtml?: string; personId?: string | null; personDesc?: string | null };
 export const authors: Record<string, Author> = authorsJson as Record<string, Author>;
 
 export function initials(name: string): string {
@@ -14,7 +14,7 @@ export function authorFor(slug: string, fallbackName: string): Author {
 	return authors[slug] ?? { slug, name: fallbackName, bio: "", url: `https://www.socialeurope.eu/author/${slug}`, avatarHtml: `<span class="se-avatar se-avatar--initials">${initials(fallbackName)}</span>` };
 }
 
-export type Fixture = { id: number; slug: string; bylines: { slug: string; name: string }[]; heroBg: string | null; relInline: string | null; relBand: string | null; title: string; dek: string; bodyClass: string; articleClass: string };
+export type Fixture = { id: number; slug: string; bylines: { slug: string; name: string }[]; heroBg: string | null; relInline: string | null; relBand: string | null; title: string; dek: string; bodyClass: string; articleClass: string; imageW?: number | null; imageH?: number | null; modified?: string | null; modifiedDay?: string | null; wordCount?: number | null; description?: string | null; ogDescription?: string | null; ldDescription?: string | null; ldPublished?: string | null; ldHeadline?: string | null; ldKeywords?: string | string[] | null; ogTitle?: string | null };
 const FIXTURE_DIR = path.join(process.cwd(), "archive", "fixtures");
 let slugIndex: Map<string, number> | null = null;
 function loadSlugIndex(): Map<string, number> {

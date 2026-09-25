@@ -2,8 +2,6 @@
 /** Social Europe page skeleton: GeneratePress markup frozen from the live site (spike 1). Two frozen stylesheets: WordPress emitted
  *  merged-header rules (white nav icons) only on single posts and different column widths for pages without a sidebar, so there
  *  are three frozen stylesheets: article, site (with sidebar) and nosidebar. */
-import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
-import { createPublicPageContext } from "emdash/page";
 import headerInner from "../se/partials/header-inner.html?raw";
 import footer from "../se/partials/footer.html?raw";
 import slideout from "../se/partials/slideout.html?raw";
@@ -11,27 +9,22 @@ import slideoutOverlay from "../se/partials/slideout-overlay.html?raw";
 import nsHighlight from "../se/partials/ns-highlight.html?raw";
 import gpScripts from "../se/partials/gp-inline-scripts.html?raw";
 import awrm from "../se/partials/awrm-rotation.html?raw";
+import plausible from "../se/partials/head-plausible.html?raw";
+import icons from "../se/partials/head-icons.html?raw";
 
-interface Props { share?: string; title: string; description?: string | null; canonical: string; bodyClass: string; image?: string | null; type?: "website" | "article"; content?: { collection: string; id: string; slug?: string | null }; mergedHeader?: boolean; robots?: string | null; stylesheet?: "article" | "site" | "nosidebar"; }
-const { title, description, canonical, bodyClass, image, type = "website", content, share, mergedHeader = false, robots, stylesheet } = Astro.props;
+interface Props { head: string; share?: string; title: string; description?: string | null; canonical: string; bodyClass: string; image?: string | null; type?: "website" | "article"; content?: { collection: string; id: string; slug?: string | null }; mergedHeader?: boolean; robots?: string | null; stylesheet?: "article" | "site" | "nosidebar"; }
+const { head, title, bodyClass, share, mergedHeader = false, stylesheet } = Astro.props;
 const css = stylesheet ?? (mergedHeader ? "article" : "site");
-const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "custom", pageType: type, title, pageTitle: title, description, canonical, image, content, seo: { ogImage: image, robots }, siteName: "Social Europe" });
 ---
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{title}</title>
-{description && <meta name="description" content={description} />}
-{robots && <meta name="robots" content={robots} />}
-<link rel="canonical" href={canonical} />
+<Fragment set:html={head} />
 <link rel="stylesheet" href={`/se/frozen-${css}.css`} />
-<link rel="icon" href="https://www.socialeurope.eu/wp-content/uploads/2025/10/cropped-SE-scaled-1-150x150.png" sizes="32x32" />
-<EmDashHead page={pageCtx} />
+<Fragment set:html={plausible} />
+<Fragment set:html={icons} />
 </head>
 <body class={bodyClass}>
-<EmDashBodyStart page={pageCtx} />
 {mergedHeader ? <div class="header-wrap"><Fragment set:html={headerInner} /></div> : <Fragment set:html={headerInner} />}
 <slot name="hero" />
 <div id="page" class="site grid-container container hfeed">
@@ -55,6 +48,5 @@ const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "cu
 <script is:inline src="/se/menu.min.js"></script>
 <script is:inline src="/se/accordion.js"></script>
 {mergedHeader && <Fragment set:html={nsHighlight} />}
-<EmDashBodyEnd page={pageCtx} />
 </body>
 </html>

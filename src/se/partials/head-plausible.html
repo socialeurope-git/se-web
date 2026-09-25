@@ -1,0 +1,15 @@
+<script async src="https://www.socialeurope.eu/js/metrics.js"></script>
+<script>
+        // 1. Die Warteschlange definieren (Standard)
+        window.plausible = window.plausible || function() { (plausible.q = plausible.q || []).push(arguments) };
+
+        // 2. DER FIX: Die 'init'-Funktion vorab definieren
+        // Das verhindert den "not a function" Fehler, falls Brave das Skript verzögert.
+        window.plausible.init = window.plausible.init || function(options) { window.plausible.o = options || {}; };
+
+        // 3. Stealth Mode aktivieren
+        // Wir senden die Daten an den neuen unauffälligen Pfad
+        plausible.init({
+            endpoint: '/sys/ping'
+        });
+    </script>

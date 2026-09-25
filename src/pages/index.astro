@@ -1,4 +1,6 @@
 ---
 import Listing from "../se/Listing.astro";
+import Search from "../se/Search.astro";
+const q = Astro.url.searchParams.get("s");
 ---
-<Listing kind="home" page={1} />
+{q !== null && q.trim() ? <Search q={q} page={1} /> : <Listing kind="home" page={1} />}

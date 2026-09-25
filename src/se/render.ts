@@ -41,6 +41,8 @@ function renderImage(b: Block): string {
 
 /** Server-side equivalent of what the WordPress Interactivity runtime does on load: accordion panels start hidden. */
 export function fixRawHtml(html: string): string {
+	// snippet 58: YouTube embeds via the privacy-enhanced domain
+	html = html.replace(/(src=["'])https?:\/\/(www\.)?youtube\.com\/embed\//g, "$1https://www.youtube-nocookie.com/embed/");
 	return html.replace(/<div([^>]*class="[^"]*wp-block-accordion-panel[^"]*"[^>]*)>/g, (m, a) => (/\shidden(=|\s|>)/.test(a) ? m : `<div${a} hidden="until-found">`));
 }
 /** Render a Portable Text array to WordPress-shaped HTML. */

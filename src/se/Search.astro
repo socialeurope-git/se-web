@@ -1,0 +1,56 @@
+---
+/** Search results page at /?s=<query> (snippet 35 markup). Data: EmDash full-text search; the live site uses the hybrid
+ *  sidecar, which can be plugged in here later without touching the markup. */
+import { search, getEmDashEntry } from "emdash";
+import SE from "../layouts/SE.astro";
+import { cardHtml } from "./listing";
+import { authors } from "./data";
+import { escapeHtml, ordinalDate } from "./format";
+import { fixtureForSlug } from "./data";
+import sidebar from "./partials/sidebar.html?raw";
+import { renderHead } from "./head";
+interface Props { q: string; page: number }
+const { q, page } = Astro.props;
+const PER = 16;
+// cursor pagination -> page N
+let cursor: string | undefined; let results: { slug: string; title: string; collection: string }[] = []; let total = 0;
+const first = await search(q, { collections: ["posts"], limit: PER * page });
+const all = ((first as { items?: unknown[]; results?: unknown[] }).items ?? (first as { results?: unknown[] }).results ?? []) as { slug: string; title: string; collection: string }[];
+total = (first as { total?: number }).total ?? all.length;
+results = all.slice((page - 1) * PER, page * PER);
+const pages = Math.max(1, Math.ceil(total / PER));
+// author card when the query matches an author name
+const qn = q.trim().toLowerCase();
+const authorHit = Object.values(authors).find((a) => a.name.toLowerCase() === qn || a.slug === qn.replace(/\s+/g, "-"));
+const items: string[] = [];
+for (const r of results) {
+	const { entry } = await getEmDashEntry("posts", r.slug); if (!entry) continue;
+	const d = entry.data as Record<string, unknown>; const fx = fixtureForSlug(r.slug);
+	const id = fx?.id ?? 0; const card = id ? cardHtml(id) : ""; const pic = card.match(/<picture>[\s\S]*?<\/picture>/)?.[0] ?? "";
+	const bl = ((fx?.bylines?.length ? fx.bylines : ((d.bylines ?? []) as { byline: { slug: string; displayName: string } }[]).map((c) => ({ slug: c.byline.slug, name: c.byline.displayName })))).map((b) => `<a href="https://www.socialeurope.eu/author/${b.slug}" title="Posts by ${escapeHtml(b.name)}" class="author url fn" rel="author">${escapeHtml(b.name)}</a>`).join(", ");
+	const cats = (((d.terms as { category?: { slug: string; label: string }[] } | undefined)?.category) ?? []).map((c) => `<a href="https://www.socialeurope.eu/category/${c.slug}" rel="category tag">${c.label}</a>`).join(", ");
+	const dt = d.publishedAt as Date; const iso = new Date(dt).toISOString().replace(/\.\d{3}Z$/, "+00:00");
+	items.push(`<article id="post-${id}" class="post-${id} post type-post status-publish format-standard has-post-thumbnail hentry ${(((d.terms as { category?: { slug: string }[] } | undefined)?.category) ?? []).map((c) => "category-" + c.slug).join(" ")}" itemtype="https://schema.org/CreativeWork" itemscope>
+<div class="inside-article">
+<header class="entry-header">
+<h2 class="entry-title" itemprop="headline"><a href="https://www.socialeurope.eu/${r.slug}" rel="bookmark">${escapeHtml(d.title as string)}</a></h2>
+<div class="entry-meta">
+<span class="posted-on"><time class="entry-date published" datetime="${iso}" itemprop="datePublished">${ordinalDate(dt)}</time></span> <span class="byline">${bl}</span> <span class="cat-links">${cats}</span>
+</div>
+</header>
+<a class="se-sr-thumb" href="https://www.socialeurope.eu/${r.slug}" tabindex="-1" aria-hidden="true">${pic}</a>
+<div class="entry-summary">
+<p>${escapeHtml((d.excerpt as string) ?? "")}</p>
+</div>
+</div>
+</article>`);
+}
+const authorCard = authorHit ? `<div class="se-author-profile-box se-author-profile se-sr-card se-sr-card--author"><h4 class="se-box-header">Author profile</h4><div class="se-box-inner"><div class="se-author-avatar">${authorHit.avatarHtml}</div><div class="se-author-text"><h3 class="se-author-name-title"><a href="${authorHit.url}">${escapeHtml(authorHit.name)}</a></h3><div class="se-author-bio-text"><p>${authorHit.bio}</p><p class="se-sr-card__meta"><a class="se-sr-card__link" href="${authorHit.url}">Author page <span aria-hidden="true">&rarr;</span></a></p></div></div></div></div>` : "";
+const nav = pages > 1 ? `<nav class="se-sr-pagination" aria-label="Search results pages"><span class="se-sr-pagination__count">Page ${page} of ${pages}</span><span class="se-sr-pagination__links">${page > 1 ? `<a href="https://www.socialeurope.eu/${page === 2 ? "" : `page/${page - 1}`}?s=${encodeURIComponent(q)}" ><span aria-hidden="true">&larr;</span> Newer Articles</a>` : ""}${page < pages ? `<a href="https://www.socialeurope.eu/page/${page + 1}?s=${encodeURIComponent(q)}" >Older Articles <span aria-hidden="true">&rarr;</span></a>` : ""}</span></nav>` : "";
+const main = `${authorCard}<header class="page-header se-sr-header" aria-label="Page"><h1 class="page-title se-sr-title">Search results for <strong>&ldquo;${escapeHtml(q)}&rdquo;</strong></h1></header>\n${items.join("\n")}\n${nav}`;
+const bodyClass = "search search-results wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-left slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover";
+---
+<SE head={renderHead({ kind: "search", title: `Search Results for “${q}” - Social Europe`, ogTitle: `Search Results for “${q}”`, canonical: `https://www.socialeurope.eu/?s=${encodeURIComponent(q)}`, robots: "noindex,max-snippet:-1,max-image-preview:large,max-video-preview:-1", breadcrumbs: [{ name: `Search Results for “${q}”` }], publisherFull: true })} title={`Search Results for “${q}” - Social Europe`} bodyClass={bodyClass}>
+	<Fragment set:html={main} />
+	<Fragment slot="sidebar" set:html={sidebar} />
+</SE>
