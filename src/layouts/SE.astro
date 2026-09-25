@@ -72,7 +72,9 @@ const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "cu
 <script is:inline src="/se/menu.min.js"></script>
 <script is:inline src="/se/accordion.js"></script>
 <script is:inline src="/se/search-bar.js"></script>
+<script is:inline src="/se/beacons.js"></script>
 {mergedHeader && <Fragment set:html={nsHighlight} />}
+{mergedHeader && <script is:inline src="/se/ns-highlight.js"></script>}
 <EmDashBodyEnd page={pageCtx} />
 </body>
 </html>
