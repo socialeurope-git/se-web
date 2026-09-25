@@ -6,10 +6,9 @@ import { defineConfig, fontProviders } from "astro/config";
 import emdash, { local, s3 } from "emdash/astro";
 import { sqlite } from "emdash/db";
 
-// Media storage: local folder in development; Bunny Storage via its S3 API in staging/production (SE_STORAGE=s3).
-// EmDash's own s3() adapter reads S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_REGION, S3_PUBLIC_URL
-// from the environment at process start (Bunny: access key = zone name, secret = zone password, endpoint de-s3.storage.bunnycdn.com).
-const storage = process.env.SE_STORAGE === "s3" ? s3() : local({ directory: "./uploads", baseUrl: "/_emdash/api/media/file" });
+// Deployment pattern of the official Node.js guide (docs.emdashcms.com/deployment/nodejs): SQLite on a persistent
+// volume via DATABASE_PATH, media in S3-compatible storage via the S3_* variables, local storage for development.
+const storage = process.env.S3_BUCKET ? s3() : local({ directory: "./uploads", baseUrl: "/_emdash/api/media/file" });
 
 export default defineConfig({
 	output: "server",
@@ -23,8 +22,10 @@ export default defineConfig({
 	integrations: [
 		react(),
 		emdash({
-			database: sqlite({ url: process.env.EMDASH_DB_URL ?? "file:./data.db" }),   // container: file:/data/data.db on the persistent volume
+			database: sqlite({ url: `file:${process.env.DATABASE_PATH ?? "./data.db"}` }),
 			storage,
+			// Public origin behind the CDN/TLS proxy (passkeys, CSRF, sitemap): EMDASH_SITE_URL, extra hostnames via EMDASH_ALLOWED_ORIGINS
+			...(process.env.EMDASH_SITE_URL ? { siteUrl: process.env.EMDASH_SITE_URL } : {}),
 			plugins: [auditLog, seOps],
 		}),
 	],

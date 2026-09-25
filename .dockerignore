@@ -1,12 +1,11 @@
 node_modules
 plugins/se-ops/node_modules
 dist
+.git
+.env
 archive
 uploads
 uploads-mirror
 data.db*
-.env
-.git
 .astro
 _template-reference
-tools
