@@ -211,6 +211,7 @@ xml=f'''<?xml version="1.0" encoding="UTF-8" ?>
 {authors_xml}{cx}{tx}<generator>https://wordpress.org/?v=7.1</generator>
 {''.join(items)}
 </channel></rss>'''
+xml=re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]','',xml)   # control characters are not allowed in XML, not even inside CDATA
 out=f'{A}/wxr-{NAME}.xml'; open(out,'w').write(xml)
 import xml.dom.minidom as md; md.parseString(xml.encode())
 # merge authors into the theme data file (keep existing avatar markup if already captured)
