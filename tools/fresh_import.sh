@@ -23,6 +23,9 @@ for coll in ('posts','pages'):
         print('removed seeded',coll,slug)
 PY
 # the blog template's pages collection has no excerpt field; the importer writes one for every post type
+# Phase 2: bylines = source of truth for authorship (creates the CAP co-author bylines, bios, websites; attaches the full author list per post)
+python3 tools/sync_bylines.py | tail -2
+
 # an API token for later CLI/API work in this session (content scopes)
 curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d '{"name":"local-dev","scopes":["content:read","content:write","schema:read","schema:write"]}' http://127.0.0.1:4321/_emdash/api/admin/api-tokens | python3 -c "import json,sys;d=json.load(sys.stdin).get('data') or {};t=d.get('token') or d.get('plaintext') or '';open('archive/token.txt','w').write(t);print('token saved' if t else 'no token')"
 TOKEN=$(cat archive/token.txt); npx emdash schema add-field pages excerpt --type text --label Excerpt -u http://127.0.0.1:4321 -t "$TOKEN" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | head -1

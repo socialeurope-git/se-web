@@ -29,9 +29,9 @@ const fx = pageEntry ? null : fixtureForSlug(slug);
 const P = (post ?? { data: {} }) as { data: Record<string, unknown> };
 const title = (P.data.title as string) ?? "";
 const dek = (P.data.excerpt as string) ?? "";
-// Bylines: the entry's bylines once the migration attaches co-authors; until then the live fixture carries all of them.
+// Bylines: EmDash entry bylines (tools/sync_bylines.py attached the full CAP author list); the fixture is only a fallback.
 const entryBylines = ((P.data.bylines ?? []) as { byline: { slug: string; displayName: string } }[]).map((c) => ({ slug: c.byline.slug, name: c.byline.displayName }));
-const bylines = ((fx?.bylines?.length ?? 0) > entryBylines.length ? fx!.bylines : entryBylines).map((b) => authorFor(b.slug, b.name));
+const bylines = (entryBylines.length ? entryBylines : (fx?.bylines ?? [])).map((b) => authorFor(b.slug, b.name));
 const fi = P.data.featured_image as { src?: string } | undefined;
 const heroBg = fx?.heroBg ?? (fi?.src ? fi.src.replace(/\.(jpe?g|png)$/i, ".webp") : "");
 const dateStr = P.data.publishedAt ? ordinalDate(P.data.publishedAt as Date) : "";
