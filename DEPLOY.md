@@ -8,12 +8,12 @@ data directory `/app/data`); `.github/workflows/image.yml` pushes `ghcr.io/socia
 ## Runtime environment (Magic Containers app → container env)
 | Variable | Value |
 |---|---|
-| `DATABASE_PATH` | `/app/data/emdash.db` — `/app/data` is the persistent volume (SQLite) |
+| `DATABASE_PATH` | `/app/data/data.db` — `/app/data` is the persistent volume (SQLite). Baked into the image at build time (astro.config runs during `astro build`), the runtime value must match |
 | `EMDASH_ENCRYPTION_KEY` | from `npx emdash secrets generate`; keep with the backups (plugin secrets are unreadable without it) |
 | `EMDASH_SITE_URL` | public origin, e.g. `https://mc-hdck3f7ufk.bunny.run` (staging) or `https://www.socialeurope.eu`; required behind the CDN for passkeys, CSRF, sitemap |
 | `EMDASH_ALLOWED_ORIGINS` | optional extra hostnames accepted for passkeys (comma-separated) |
 | `S3_ENDPOINT` | `https://de-s3.storage.bunnycdn.com` |
-| `S3_BUCKET` / `S3_ACCESS_KEY_ID` | `se-media` (storage zone name = access key id); setting `S3_BUCKET` switches the storage adapter from local to S3 |
+| `S3_BUCKET` / `S3_ACCESS_KEY_ID` | `se-media` (storage zone name = access key id). `S3_BUCKET` is also set at build time: it selects the S3 adapter in astro.config |
 | `S3_SECRET_ACCESS_KEY` | the storage zone password |
 | `S3_REGION` | `de` |
 | `S3_PUBLIC_URL` | `https://www.socialeurope.eu` (media served through the pull zone); unset on staging so the app serves media itself |
