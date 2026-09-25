@@ -1,0 +1,23 @@
+{
+	"$schema": "./node_modules/@emdash-cms/plugin-cli/schemas/emdash-plugin.schema.json",
+	"slug": "se-ops",
+	"publisher": "did:web:socialeurope.eu",
+	"license": "MIT",
+	"author": { "name": "Social Europe", "email": "h.meyer@socialeurope.eu" },
+	"security": { "email": "h.meyer@socialeurope.eu" },
+	"description": "Social Europe operations: Bunny CDN purge on publish, Uptime Kuma heartbeat, admin purge button",
+	// Trust contract: content events for the purge hooks, outbound HTTP to Bunny and Uptime Kuma only.
+	"capabilities": ["content:read", "network:request"],
+	"allowedHosts": ["api.bunny.net", "uptime.webconsole.app"],
+	"storage": {},
+	"admin": {
+		"pages": [{ "path": "/ops", "label": "SE Ops", "icon": "settings" }],
+		"widgets": [{ "id": "status", "title": "SE Ops", "size": "half" }],
+		"settingsSchema": {
+			"site_url": { "label": "Site URL", "type": "string", "default": "https://www.socialeurope.eu", "description": "Public origin whose URLs are purged" },
+			"bunny_api_key": { "label": "Bunny account API key", "type": "secret", "description": "Used for purge requests (api.bunny.net)" },
+			"pull_zone_id": { "label": "Bunny pull zone ID", "type": "string", "description": "For the full-zone purge button (e.g. 5962195)" },
+			"kuma_push_url": { "label": "Uptime Kuma push URL", "type": "string", "description": "Heartbeat every 5 minutes; leave empty to disable" }
+		}
+	}
+}

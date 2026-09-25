@@ -6,3 +6,4 @@ uploads/
 .astro/
 archive/
 uploads-mirror/
+plugins/se-ops/node_modules/

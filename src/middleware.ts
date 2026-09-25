@@ -1,6 +1,7 @@
 import { defineMiddleware } from "astro:middleware";
 import type { APIContext, MiddlewareNext } from "astro";
 import { mediaRedirect, localiseMedia } from "./se/media";
+import wpIds from "./se/data/wp-ids.json";
 /** URL compatibility with the WordPress site:
  *  - snippet 34: /YYYY/MM/slug  -> /slug (301)
  *  - TSF SearchAction target:  /search/<term> -> /?s=<term> (301)
@@ -36,6 +37,11 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 
 async function route(ctx: APIContext, next: MiddlewareNext): Promise<Response> {
 	const { pathname, search } = ctx.url;
+	// WordPress "ugly" permalinks (?p=<id>, ?page_id=<id>; the old feed GUIDs) -> the slug
+	if (pathname === "/" && (ctx.url.searchParams.has("p") || ctx.url.searchParams.has("page_id"))) {
+		const slug = (wpIds as { posts: Record<string, string>; pages: Record<string, string> }).posts[ctx.url.searchParams.get("p") ?? ""] ?? (wpIds as { pages: Record<string, string> }).pages[ctx.url.searchParams.get("page_id") ?? ""];
+		if (slug) return ctx.redirect(`/${slug}`, 301);
+	}
 	// legacy WordPress upload URLs -> the EmDash media item (originals; size variants collapse onto the original)
 	if (pathname.startsWith("/wp-content/uploads/")) { const to = mediaRedirect(pathname); return to ? ctx.redirect(to, 301) : new Response("Not found", { status: 404 }); }
 	const dated = pathname.match(/^\/(\d{4})\/(\d{2})\/([^\/]+)\/?$/);

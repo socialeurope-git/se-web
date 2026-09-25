@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Phase 2: make EmDash bylines the source of truth for authorship.
 
-1. Every author in archive/authors.json exists as a byline (guest, no login),
+1. Every author in archive/authors.json exists as a byline (no login; "guest" in EmDash only means "no user account", so the flag stays off),
    with bio + website where the WP profile had them.
 2. Every post carries exactly the Co-Authors-Plus author list (archive/coauthors.json),
    in the CAP order, as explicit bylines.
@@ -81,12 +81,12 @@ def main():
     created = updated = 0
     for slug, au in authors.items():
         credit = "se-avatar-credit" in (au.get("avatarBoxHtml") or "")   # portrait listed on /photo-credits (byline field photo_credit)
-        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": True, "avatarMediaId": avatar_media(au), "customFields": {"photo_credit": credit}}
+        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": False, "avatarMediaId": avatar_media(au), "customFields": {"photo_credit": credit}}
         ex = by_slug.get(slug)
         if not ex:
             print("create", slug); created += 1
             if not a.dry_run: by_slug[slug] = api("POST", "/_emdash/api/admin/bylines", body)["data"]
-        elif (ex.get("bio") or None) != body["bio"] or (ex.get("websiteUrl") or None) != body["websiteUrl"] or ex["displayName"] != au["name"] or (ex.get("avatarMediaId") or None) != body["avatarMediaId"] or bool((ex.get("customFields") or {}).get("photo_credit")) != credit:
+        elif (ex.get("bio") or None) != body["bio"] or (ex.get("websiteUrl") or None) != body["websiteUrl"] or ex["displayName"] != au["name"] or (ex.get("avatarMediaId") or None) != body["avatarMediaId"] or bool((ex.get("customFields") or {}).get("photo_credit")) != credit or ex.get("isGuest") is not False:
             updated += 1
             if not a.dry_run: api("PUT", f"/_emdash/api/admin/bylines/{ex['id']}", {k: v for k, v in body.items() if k != "slug"})
     print(f"bylines: {created} created, {updated} updated, {len(by_slug)} total, {sum(1 for a in authors.values() if avatar_media(a))} with portrait media")

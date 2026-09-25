@@ -1,6 +1,7 @@
 import node from "@astrojs/node";
 import react from "@astrojs/react";
 import auditLog from "@emdash-cms/plugin-audit-log";
+import seOps from "se-ops";   // plugins/se-ops: Bunny purge on publish, Kuma heartbeat, admin purge button
 import { defineConfig, fontProviders } from "astro/config";
 import emdash, { local, s3 } from "emdash/astro";
 import { sqlite } from "emdash/db";
@@ -24,7 +25,7 @@ export default defineConfig({
 		emdash({
 			database: sqlite({ url: "file:./data.db" }),
 			storage,
-			plugins: [auditLog],
+			plugins: [auditLog, seOps],
 		}),
 	],
 	fonts: [
