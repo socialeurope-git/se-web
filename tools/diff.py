@@ -18,6 +18,8 @@ async def shoot(page, url, out):
     await page.evaluate('window.scrollTo(0,0)')
     try: await page.wait_for_load_state('networkidle', timeout=8000)
     except Exception: pass
+    try: await page.evaluate("Promise.all([...document.images].map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; })))")   # lazy images must be in before the shot
+    except Exception: pass
     await page.wait_for_timeout(400); await page.screenshot(path=out, full_page=True, animations='disabled')
 def compare(a, b, out):
     A = Image.open(a).convert('RGB'); B = Image.open(b).convert('RGB'); w = min(A.width, B.width); h = min(A.height, B.height)

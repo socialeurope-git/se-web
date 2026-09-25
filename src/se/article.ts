@@ -12,7 +12,7 @@ export function heroByline(bylines: Author[]): string {
 }
 /** Author profile box after the article (one per byline). */
 export function authorBox(a: Author): string {
-	const bio = a.bio ? `<p>${a.bio}</p>\n` : "";
+	const bio = a.bio ? (/^\s*<(div|p|ul|ol)\b/.test(a.bio) ? `${a.bio}\n` : `<p>${a.bio}</p>\n`) : "";   // WordPress wraps plain-text bios in <p>, block markup stays as is
 	const avatar = (a as Author & { avatarBoxHtml?: string }).avatarBoxHtml ?? a.avatarHtml;   // author box carries the photo credit link
 	return `<div class="se-author-profile-box se-author-profile"><h4 class="se-box-header">AUTHOR PROFILE</h4><div class="se-box-inner"><div class="se-author-avatar">${avatar}</div><div class="se-author-text"><h3 class="se-author-name-title"><a href="${a.url}">${escapeHtml(a.name)}</a></h3><div class="se-author-bio-text">${bio}</div></div></div></div>`;
 }

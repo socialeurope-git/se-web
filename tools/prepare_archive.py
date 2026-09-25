@@ -78,10 +78,10 @@ def wrap_blocks(body):
         text=re.sub(r'<[^>]+>','',el).replace('&nbsp;','').strip()
         if tag=='p' and plain_cls and 'style=' not in attrs and not re.search(r'<(img|figure|iframe|table|video|audio|picture|br)',el) and text:   # <br> is dropped by the converter -> keep verbatim
             out.append(f'<!-- wp:paragraph -->\n{el}\n<!-- /wp:paragraph -->')
-        elif tag in('h1','h2','h3','h4','h5','h6') and plain_cls and 'style=' not in attrs:
+        elif tag in('h1','h2','h3','h4','h5','h6') and plain_cls and 'style=' not in attrs and ' id=' not in attrs:   # heading anchors (id) are dropped by the converter -> keep raw
             lvl=int(tag[1]); attr='' if lvl==2 else ' {"level":%d}'%lvl
             out.append(f'<!-- wp:heading{attr} -->\n{el}\n<!-- /wp:heading -->')
-        elif tag in('ul','ol') and plain_cls and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el:
+        elif tag in('ul','ol') and plain_cls and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el and '<br' not in el:   # <br> inside items would be dropped
             attr=' {"ordered":true}' if tag=='ol' else ''
             out.append(f'<!-- wp:list{attr} -->\n{el}\n<!-- /wp:list -->')
         elif tag=='blockquote' and plain_cls and '<img' not in el and not re.search(r'<(ul|ol|h[1-6])',el):
@@ -102,7 +102,7 @@ def author_from_hero(h):
             av=f'<span class="se-avatar">{inner}</span>' if '<picture' in inner else (f'<span class="se-avatar se-avatar--initials">{inner.strip()}</span>' if inner.strip() and '<' not in inner else '')
             res.append((slug,name,av))
             a=authors.setdefault(slug,{'slug':slug,'name':name,'avatarHtml':'','bio':'','url':f'https://www.socialeurope.eu/author/{slug}'})
-            if av and not a['avatarHtml']: a['avatarHtml']=av
+            if av and (not a['avatarHtml'] or ('<picture' in av and '<picture' not in a['avatarHtml'])): a['avatarHtml']=av
             u=users.get(slug)
             if u and not a['bio']: a['bio']=u.get('description',''); a['name']=u.get('name') or name
         return res
@@ -114,7 +114,7 @@ def author_from_hero(h):
             av=seg or av
         res.append((slug,name,av))
         a=authors.setdefault(slug,{'slug':slug,'name':name,'avatarHtml':'','bio':'','url':f'https://www.socialeurope.eu/author/{slug}'})
-        if av and not a['avatarHtml']: a['avatarHtml']=av
+        if av and (not a['avatarHtml'] or ('<picture' in av and '<picture' not in a['avatarHtml'])): a['avatarHtml']=av
         u=users.get(slug)
         if u and not a['bio']: a['bio']=u.get('description','') ; a['name']=u.get('name') or name
     return res
@@ -159,21 +159,19 @@ for p in sel:
     head_title=re.search(r'<title>(.*?)</title>',h,re.S)
     # SEO facts from the live head: author Person @id (TSF hashes the user e-mail, not reproducible), image size, modified date
     lds=[m.group(1) for m in re.finditer(r'<script type="application/ld\+json"[^>]*>(.*?)</script>',h,re.S)]
-    personId=None; personDesc=None; imgw=imgh=None; modified=None; wordcount=None; lddesc=None; ldpub=None; ldhead=None; ldkw=None
+    personId=None; personDesc=None; imgw=imgh=None; modified=None; wordcount=None; lddesc=None; ldpub=None; ldhead=None; ldkw=None; seo_author=None; ldauthors=None
     for ld in lds:
         try: d=json.loads(ld)
         except Exception: continue
         if '@graph' in d:
             for node in d['@graph']:
-                if node.get('@type')=='WebPage' and isinstance(node.get('author'),dict): personId=node['author'].get('@id'); personDesc=node['author'].get('description')
+                if node.get('@type')=='WebPage' and isinstance(node.get('author'),dict): personId=node['author'].get('@id'); personDesc=node['author'].get('description'); seo_author=node['author']
         elif d.get('@type')=='NewsArticle':
-            img=d.get('image') or {}; imgw,imgh=img.get('width'),img.get('height'); modified=d.get('dateModified'); wordcount=d.get('wordCount'); lddesc=d.get('description'); ldpub=d.get('datePublished'); ldhead=d.get('headline'); ldkw=d.get('keywords')
-    if bylines and personId:
-        a=authors.get(bylines[0][0])
-        if a is not None and not a.get('personId'): a['personId']=personId; a['personDesc']=personDesc
+            img=d.get('image') or {}; imgw,imgh=img.get('width'),img.get('height'); modified=d.get('dateModified'); wordcount=d.get('wordCount'); lddesc=d.get('description'); ldpub=d.get('datePublished'); ldhead=d.get('headline'); ldkw=d.get('keywords'); ldauthors=d.get('author')
+    pass
     ogm=re.search(r'<meta property="article:modified_time" content="([^"]*)"',h)
     mdesc=re.search(r'<meta name="description" content="([^"]*)"',h); ogdesc=re.search(r'<meta property="og:description" content="([^"]*)"',h); ogt=re.search(r'<meta property="og:title" content="([^"]*)"',h)
-    fx={'id':pid,'slug':p['slug'],'bylines':[{'slug':s,'name':n} for s,n,_ in bylines],'heroBg':hero_bg.group(1) if hero_bg else None,'relInline':rel_inline,'relBand':rel_band,'title':html.unescape(head_title.group(1).strip()) if head_title else title,'dek':dek,'imageW':imgw,'imageH':imgh,'modified':modified,'modifiedDay':ogm.group(1) if ogm else None,'wordCount':wordcount,'ldDescription':lddesc,'ldPublished':ldpub,'ldHeadline':ldhead,'ldKeywords':ldkw,'ogTitle':html.unescape(ogt.group(1)) if ogt else None,'description':html.unescape(mdesc.group(1)) if mdesc else None,'ogDescription':html.unescape(ogdesc.group(1)) if ogdesc else None,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1]}
+    fx={'id':pid,'slug':p['slug'],'bylines':[{'slug':s,'name':n} for s,n,_ in bylines],'heroBg':hero_bg.group(1) if hero_bg else None,'relInline':rel_inline,'relBand':rel_band,'title':html.unescape(head_title.group(1).strip()) if head_title else title,'dek':dek,'imageW':imgw,'imageH':imgh,'modified':modified,'modifiedDay':ogm.group(1) if ogm else None,'wordCount':wordcount,'ldDescription':lddesc,'ldPublished':ldpub,'ldHeadline':ldhead,'ldKeywords':ldkw,'seoAuthor':seo_author,'ldAuthors':ldauthors,'ogTitle':html.unescape(ogt.group(1)) if ogt else None,'description':html.unescape(mdesc.group(1)) if mdesc else None,'ogDescription':html.unescape(ogdesc.group(1)) if ogdesc else None,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1]}
     json.dump(fx,open(f'{A}/fixtures/{pid}.json','w')); fixtures_written+=1
 # pages: body from the rendered live page (archive/live-pages/<slug>.html), fixture with the template wrappers
 PAGES_DIR=os.path.join(os.path.dirname(A),'archive','live-pages') if os.path.basename(A)=='archive' else os.path.join(A,'live-pages')
@@ -219,6 +217,6 @@ ap=f'{ROOT}/src/se/data/authors.json'; existing=json.load(open(ap)) if os.path.e
 for s,a in authors.items():
     e=existing.setdefault(s,a)
     for k,v in a.items():
-        if v and not e.get(k): e[k]=v
+        if v and (not e.get(k) or (k in('avatarHtml','avatarBoxHtml') and '<picture' in str(v) and '<picture' not in str(e.get(k)))): e[k]=v
 json.dump(existing,open(ap,'w'),indent=0,ensure_ascii=False)
 print(f'{out}: {len(sel)-missing_live} posts, {len(att_seen)} featured attachments, {sum(1 for pg in pages if only is None or pg["id"] in only)} pages, {len(authors)} authors (total in data file {len(existing)}), fixtures {fixtures_written}, missing live pages {missing_live}, {len(xml)//1024} KB')
