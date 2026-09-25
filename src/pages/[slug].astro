@@ -32,8 +32,9 @@ const categories = ((post.data.terms as { category?: { slug: string; label: stri
 const elements = splitTopLevel(renderBlocks(post.data.content as never[]));
 const n = paragraphCount(elements);
 // Measured on 100 live pages: related widget after paragraph 5, newsletter box after paragraph 10; shorter posts get them after the last paragraph.
-let parts = injectAfterParagraph(elements, Math.min(5, n), fx?.relInline ?? "");
-parts = injectAfterParagraph(parts, Math.min(10, n), newsletterBox);
+// Newsletter first, then related: when both anchor on the same paragraph (posts with 5 or fewer paragraphs) the related widget must come first.
+let parts = injectAfterParagraph(elements, Math.min(10, n), newsletterBox);
+parts = injectAfterParagraph(parts, Math.min(5, n), fx?.relInline ?? "");
 const bodyHtml = parts.join("\n") + `\n<div class="ns-content-marker" style="display: none;"></div>`;
 // On the live site a stray closing tag ends .entry-content right after the Novashare marker, so the author box,
 // partner banner and membership box are siblings of .entry-content inside .inside-article. Reproduced deliberately.

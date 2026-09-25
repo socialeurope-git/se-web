@@ -2,8 +2,8 @@ import { escapeHtml } from "./format";
 import type { Author } from "./data";
 /** Markup of the SE hero byline (snippet 57 / GP element), one author link per byline. */
 export function heroByline(bylines: Author[]): string {
-	if (bylines.length <= 1) return `<div class="se-hero__byline se-hero__byline--inline">` + bylines.map((a) => `<a class="se-hero__author" href="${a.url}" rel="author">${a.avatarHtml}<span class="se-hero__name">${escapeHtml(a.name)}</span></a>`).join("") + `</div>`;
-	// two or more authors: stacked avatars + "A, B and C"
+	if (bylines.length <= 2) return `<div class="se-hero__byline se-hero__byline--inline">` + bylines.map((a) => `<a class="se-hero__author" href="${a.url}" rel="author">${a.avatarHtml}<span class="se-hero__name">${escapeHtml(a.name)}</span></a>`).join("") + `</div>`;
+	// three or more authors: stacked avatars + "A, B and C"
 	const inner = (a: Author) => { const m = a.avatarHtml.match(/<picture>[\s\S]*?<\/picture>/); return m ? m[0] : a.avatarHtml.replace(/<\/?span[^>]*>/g, ""); };
 	const stack = bylines.map((a) => `<a class="se-avatar se-avatar--stack" href="${a.url}" tabindex="-1" aria-hidden="true">${inner(a)}</a>`).join("");
 	const links = bylines.map((a) => `<a class="se-hero__name" href="${a.url}" rel="author">${escapeHtml(a.name)}</a>`);

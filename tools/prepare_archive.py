@@ -32,6 +32,9 @@ def clean_body(entry):
         k=b.find(marker)
         if k>=0: b=b[:k]
     b=re.sub(r'<style[^>]*>.*?</style>','',b,flags=re.S)
+    # posts without the Novashare marker are cut at the author box, which sits after WordPress's own </div> of .entry-content
+    while len(re.findall(r'</div>',b))>len(re.findall(r'<div\b',b)) and b.rstrip().endswith('</div>'):
+        b=b.rstrip()[:-6]
     for rx in (r'<aside class="se-rel-inline', r'<div id="mlb2-\d+'):
         while True:
             seg,i,j=balanced(b,rx)
@@ -123,6 +126,10 @@ for p in sel:
     for m in re.finditer(r'<div class="se-author-profile-box se-author-profile"><h4 class="se-box-header">AUTHOR PROFILE</h4><div class="se-box-inner"><div class="se-author-avatar">(.*?)</div><div class="se-author-text"><h3 class="se-author-name-title"><a href="https://www\.socialeurope\.eu/author/([^"/]+)/?">',h,re.S):
         a=authors.get(m.group(2))
         if a is not None and not a.get('avatarBoxHtml'): a['avatarBoxHtml']=m.group(1)
+    # bio from the live author box (co-authors who never were post_author are not in the REST users list)
+    for m in re.finditer(r'<h3 class="se-author-name-title"><a href="https://www\.socialeurope\.eu/author/([^"/]+)/?">[^<]*</a></h3><div class="se-author-bio-text">(.*?)</div></div></div></div>',h,re.S):
+        a=authors.get(m.group(1)); bio=re.sub(r'^\s*<p>|</p>\s*$','',m.group(2).strip())
+        if a is not None and not a.get('bio') and bio: a['bio']=bio
     if not bylines and coauthors.get(str(pid)):
         bylines=[(a['slug'],a['name'],'') for a in coauthors[str(pid)]]
     creator=bylines[0][0] if bylines else 'social-europe'

@@ -13,6 +13,7 @@ let index: IndexPost[] | null = null;
 let terms: { categories: { id: number; slug: string; name: string; description: string }[]; tags: { id: number; slug: string; name: string; description: string }[] } | null = null;
 let coauthorMap: Record<string, { slug: string }[]> | null = null;
 let userIds: Record<string, number> | null = null;
+let userNames: Record<string, string> | null = null;
 function load() {
 	if (index) return;
 	const posts = JSON.parse(fs.readFileSync(path.join(ROOT, "archive", "posts.json"), "utf8")) as Record<string, unknown>[];
@@ -21,8 +22,8 @@ function load() {
 	terms = JSON.parse(fs.readFileSync(path.join(ROOT, "archive", "terms.json"), "utf8"));
 	const cp = path.join(ROOT, "archive", "coauthors.json");
 	coauthorMap = fs.existsSync(cp) ? JSON.parse(fs.readFileSync(cp, "utf8")) : {};
-	userIds = {};
-	for (const u of JSON.parse(fs.readFileSync(path.join(ROOT, "archive", "users.json"), "utf8")) as { id: number; slug: string }[]) userIds[u.slug] = u.id;
+	userIds = {}; userNames = {};
+	for (const u of JSON.parse(fs.readFileSync(path.join(ROOT, "archive", "users.json"), "utf8")) as { id: number; slug: string; name: string }[]) { userIds[u.slug] = u.id; userNames[u.slug] = u.name; }
 }
 export const PER_PAGE = { home: 15, archive: 16 };
 
@@ -84,18 +85,18 @@ export function listPosts(kind: ListingKind, slug: string | null, page: number):
 	}
 	const per = kind === "home" ? PER_PAGE.home : PER_PAGE.archive;
 	const total = rows.length;
-	// Homepage page 1 consumes 15 cards + 18 "more" items; paged views continue after those 33 with 15 per page.
-	const start = kind === "home" ? (page === 1 ? 0 : 33 + (page - 2) * per) : (page - 1) * per;
-	const pages = kind === "home" ? Math.max(1, 1 + Math.ceil(Math.max(0, total - 33) / per)) : Math.max(1, Math.ceil(total / per));
+	// Homepage page 1 consumes 15 cards + 14 "more" items; paged views continue after those 29 with 15 per page.
+	const start = kind === "home" ? (page === 1 ? 0 : 29 + (page - 2) * per) : (page - 1) * per;
+	const pages = kind === "home" ? Math.max(1, 1 + Math.ceil(Math.max(0, total - 29) / per)) : Math.max(1, Math.ceil(total / per));
 	return { ids: rows.slice(start, start + per).map((p) => p.id), total, pages, term, authorId };
 }
 /** "More opinion and analysis" list on the homepage: the 18 posts after the 15 cards. */
 export function moreList(): string {
 	load();
-	const rows = index!.slice(PER_PAGE.home, PER_PAGE.home + 18);
+	const rows = index!.slice(PER_PAGE.home, PER_PAGE.home + 14);   // snippet 43: grid 15, list 14
 	const items = rows.map((p) => {
 		const cas = coauthorMap![String(p.id)] ?? [];
-		const links = cas.map((a) => { const au = authors[a.slug]; const name = au?.name ?? a.slug; return `<a href="https://www.socialeurope.eu/author/${a.slug}" title="Posts by ${escapeHtml(name)}" class="author url fn" rel="author">${escapeHtml(name)}</a>`; });
+		const links = cas.map((a) => { const name = authors[a.slug]?.name ?? userNames![a.slug] ?? a.slug; return `<a href="https://www.socialeurope.eu/author/${a.slug}" title="Posts by ${escapeHtml(name)}" class="author url fn" rel="author">${escapeHtml(name)}</a>`; });
 		const by = links.length <= 1 ? links.join("") : links.slice(0, -1).join(", ") + " and " + links[links.length - 1];
 		return `<li class="se-more__item"><a class="se-more__title" href="https://www.socialeurope.eu/${p.slug}">${p.title}</a><div class="se-more__by">${by}</div></li>`;
 	});

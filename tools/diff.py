@@ -11,6 +11,8 @@ MASK = "#right-sidebar{visibility:hidden}"   # ad rotation is random per load
 async def shoot(page, url, out):
     await page.goto(url, wait_until='load', timeout=60000)
     await page.add_style_tag(content=MASK)
+    await page.wait_for_timeout(300)
+    if not await page.evaluate("getComputedStyle(document.querySelector('#right-sidebar')||document.body).visibility==='hidden'"): await page.add_style_tag(content=MASK)
     h = await page.evaluate('document.body.scrollHeight')
     for y in range(0, h, 800): await page.evaluate(f'window.scrollTo(0,{y})'); await page.wait_for_timeout(50)
     await page.evaluate('window.scrollTo(0,0)')
@@ -32,7 +34,7 @@ async def main():
         browser = await pw.chromium.launch(); sem = asyncio.Semaphore(3)
         async def job(pid, w):
             async with sem:
-                ctx = await browser.new_context(viewport={'width': w, 'height': 900}); await ctx.add_init_script("Math.random=()=>0.5;"); page = await ctx.new_page()
+                ctx = await browser.new_context(viewport={'width': w, 'height': 900}); await ctx.add_init_script("Math.random=()=>0.5; document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style'); s.textContent='#right-sidebar{visibility:hidden}'; document.head.appendChild(s);});"); page = await ctx.new_page()
                 key = f'{pid}-{w}'
                 try:
                     a = f'{OUT}/shots/{key}-control.png'; b = f'{OUT}/shots/{key}-candidate.png'
