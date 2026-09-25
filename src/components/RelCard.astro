@@ -1,0 +1,9 @@
+---
+/** Card inside the related widgets (snippet 41 markup). */
+import { Image } from "emdash/ui";
+import { postUrl, credits, joinNames, type Entry } from "../se/site";
+interface Props { entry: Entry }
+const { entry } = Astro.props;
+const fi = entry.data.featured_image;
+---
+<a class="se-rel-card" href={postUrl(entry.id)}><span class="se-rel-card__media">{fi?.src && <Image image={fi} width={750} height={422} alt={fi.alt || entry.data.title} class="attachment-large size-large wp-post-image" sizes="auto, (max-width: 699px) 112px, (max-width: 1099px) 45vw, 300px" />}</span><span class="se-rel-card__body"><span class="se-rel-card__title">{entry.data.title}</span><span class="se-rel-card__by">{joinNames(credits(entry).map((b) => b.displayName))}</span></span></a>

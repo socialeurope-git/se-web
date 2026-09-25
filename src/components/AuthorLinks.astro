@@ -1,0 +1,7 @@
+---
+/** "A, B and C" as author links (card and list by-lines). */
+import { authorUrl, type Byline } from "../se/site";
+interface Props { bylines: Byline[] }
+const { bylines } = Astro.props;
+---
+{bylines.map((b, i) => <>{i > 0 && (i === bylines.length - 1 ? " and " : ", ")}<a href={authorUrl(b.slug)} title={`Posts by ${b.displayName}`} class="author url fn" rel="author">{b.displayName}</a></>)}

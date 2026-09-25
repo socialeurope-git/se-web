@@ -1,0 +1,15 @@
+---
+/** Author portrait (200x200 in the media library) or initials fallback — the markup snippet 57 / GP element used.
+ *  `bare` renders the image without the .se-avatar wrapper (stacked hero bylines put it on the link itself). */
+import { Image } from "emdash/ui";
+import { avatarSrc, initials, type Byline } from "../se/site";
+interface Props { byline: Byline; eager?: boolean; class?: string; bare?: boolean }
+const { byline, eager = false, class: cls = "", bare = false } = Astro.props;
+const src = avatarSrc(byline);
+const image = src ? { id: byline.avatarMediaId ?? "", src, alt: byline.avatarAlt || byline.displayName, width: 200, height: 200 } : null;
+---
+{bare
+	? (image ? <Image image={image} width={200} height={200} class="se-avatar__img" priority={eager} /> : initials(byline.displayName))
+	: image
+		? <span class:list={["se-avatar", cls]}><Image image={image} width={200} height={200} class="se-avatar__img" priority={eager} /></span>
+		: <span class:list={["se-avatar", "se-avatar--initials", cls]}>{initials(byline.displayName)}</span>}

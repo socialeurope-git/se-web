@@ -1,99 +1,16 @@
 ---
+/** Root-level slugs: a post, else a page (WordPress kept both directly under /). */
 import { getEmDashEntry, decodeSlug } from "emdash";
-import SE from "../layouts/SE.astro";
+import Article from "../se/Article.astro";
 import Page from "../se/Page.astro";
-import { renderBlocks, splitTopLevel, injectAfterParagraph, paragraphCount } from "../se/render";
-import { authorFor, fixtureForSlug } from "../se/data";
-import { heroByline, authorBox } from "../se/article";
-import { floatingShare } from "../se/share";
-import { renderHead } from "../se/head";
-import { cardHtml } from "../se/listing";
-import { ordinalDate, escapeHtml, berlinIso } from "../se/format";
-import sidebar from "../se/partials/sidebar.html?raw";
-import newsletterBox from "../se/partials/newsletter-box.html?raw";
-import partnerBanner from "../se/partials/partner-banner.html?raw";
-import membership from "../se/partials/membership.html?raw";
-
 const slug = decodeSlug(Astro.params.slug);
-if (!slug) return Astro.redirect("/404");
+if (!slug) return new Response(null, { status: 404 });
 const { entry: post, cacheHint } = await getEmDashEntry("posts", slug);
-let pageEntry: { id: string; data: Record<string, unknown> } | null = null;
+let page = null;
 if (!post) {
-	const { entry: pg, cacheHint: ch } = await getEmDashEntry("pages", slug);
-	if (!pg) return new Response(null, { status: 404 });
-	if (Astro.cache?.enabled) Astro.cache.set(ch);
-	pageEntry = pg as unknown as { id: string; data: Record<string, unknown> };
+	const r = await getEmDashEntry("pages", slug);
+	if (!r.entry) return new Response(null, { status: 404 });
+	page = r.entry; if (Astro.cache?.enabled) Astro.cache.set(r.cacheHint);
 } else if (Astro.cache?.enabled) Astro.cache.set(cacheHint);
-
-const fx = pageEntry ? null : fixtureForSlug(slug);
-const P = (post ?? { data: {} }) as { data: Record<string, unknown> };
-const title = (P.data.title as string) ?? "";
-const dek = (P.data.excerpt as string) ?? "";
-// Bylines: EmDash entry bylines (tools/sync_bylines.py attached the full CAP author list); the fixture is only a fallback.
-const entryBylines = ((P.data.bylines ?? []) as { byline: { slug: string; displayName: string } }[]).map((c) => ({ slug: c.byline.slug, name: c.byline.displayName }));
-const bylines = (entryBylines.length ? entryBylines : (fx?.bylines ?? [])).map((b) => authorFor(b.slug, b.name));
-const fi0 = P.data.featured_image as { src?: string } | undefined;
-// media URLs from EmDash are site-relative; head/JSON-LD need absolute URLs
-const fi = fi0?.src ? { ...fi0, src: fi0.src.startsWith("/") ? "https://www.socialeurope.eu" + fi0.src : fi0.src } : fi0;
-const heroBg = fx?.heroBg ?? (fi?.src ? fi.src.replace(/\.(jpe?g|png)$/i, ".webp") : "");
-const dateStr = P.data.publishedAt ? ordinalDate(P.data.publishedAt as Date) : "";
-const tagsOf = ((((P.data.terms as { tag?: { label: string }[] } | undefined)?.tag) ?? []).map((t) => t.label));
-const categories = ((P.data.terms as { category?: { slug: string; label: string }[] } | undefined)?.category) ?? [];
-
-// Body: Portable Text -> WordPress-shaped HTML, then the injected furniture in the live order.
-const elements = splitTopLevel(renderBlocks((P.data.content ?? []) as never[]));
-const n = paragraphCount(elements);
-// Measured on 100 live pages: related widget after paragraph 5, newsletter box after paragraph 10; shorter posts get them after the last paragraph.
-// Live order (measured on 100 posts): the newsletter box is placed first (after paragraph 10, else appended at the end),
-// then the related widget (after paragraph 5, else appended at the end). Both anchors are exact; no "n-1" fallbacks.
-let parts = injectAfterParagraph(elements, 10, newsletterBox);
-parts = injectAfterParagraph(parts, 5, fx?.relInline ?? "");
-const bodyHtml = parts.join("\n") + `\n<div class="ns-content-marker" style="display: none;"></div>`;
-// On the live site a stray closing tag ends .entry-content right after the Novashare marker, so the author box,
-// partner banner and membership box are siblings of .entry-content inside .inside-article. Reproduced deliberately.
-const afterContent = bylines.map(authorBox).join("") + partnerBanner + membership;
-
-const canonical = `https://www.socialeurope.eu/${slug}`;
-const pubDay = P.data.publishedAt ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(P.data.publishedAt as Date) : null;
-const pubIso = P.data.publishedAt ? berlinIso(P.data.publishedAt as Date) : "";
-const wordCount = fx?.wordCount ?? renderBlocks((P.data.content ?? []) as never[]).replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
-const cardImg = fx ? cardHtml(fx.id).match(/<img [^>]*alt="([^"]*)"/)?.[1] : undefined;   // the attachment alt text (straight apostrophes)
-const imageAlt = ((fi as { alt?: string } | undefined)?.alt || (cardImg ? cardImg.replace(/&#039;/g, "'").replace(/&amp;/g, "&") : title));
-const head = pageEntry ? "" : renderHead({
-	// Live values win where WordPress/TSF derived them (custom titles, texturized quotes, auto excerpts); the entry's own fields are the fallback for new content.
-	kind: "article", title: fx?.title ?? `${title} - Social Europe`, ogTitle: fx?.ogTitle ?? title, ogType: "article", canonical, description: fx?.description || dek || null, ogDescription: fx?.ogDescription || dek || null,
-	image: fi?.src ? { url: fi.src, w: fx?.imageW ?? 1280, h: fx?.imageH ?? 720, alt: imageAlt } : null,
-	published: pubDay, modified: fx?.modifiedDay ?? pubDay, oembedUrl: canonical, jsonLink: fx ? `https://www.socialeurope.eu/wp-json/wp/v2/posts/${fx.id}` : null,
-	breadcrumbs: [...(categories[0] ? [{ item: `https://www.socialeurope.eu/category/${categories[0].slug}`, name: `Category: ${categories[0].label}` }] : []), { name: fx?.ogTitle ?? title }],
-	// TSF's WebPage author is the WordPress post_author (frequently the editor who imported the piece), captured per post
-	author: fx?.seoAuthor ? { name: fx.seoAuthor.name, personId: fx.seoAuthor["@id"] ?? null, desc: fx.seoAuthor.description ?? null } : (bylines[0] ? { name: bylines[0].name, personId: null, desc: null } : null),
-	readAction: true, publisherFull: true,
-	newsArticle: { url: canonical, headline: fx?.ldHeadline ?? title.replace(/’/g, "&#8217;").replace(/‘/g, "&#8216;").replace(/“/g, "&#8220;").replace(/”/g, "&#8221;"), datePublished: pubIso, dateModified: fx?.modified ?? pubIso, authors: fx?.ldAuthors?.length ? fx.ldAuthors.map((a) => ({ name: a.name, url: a.url })) : bylines.map((b) => ({ name: b.name, url: b.url })), description: fx?.ldDescription ?? dek, image: fi?.src ? { url: fi.src, w: fx?.imageW ?? 1280, h: fx?.imageH ?? 720 } : null, sections: categories.map((c) => c.label), keywords: fx?.ldKeywords ?? (tagsOf.length ? (tagsOf.length === 1 ? tagsOf[0] : tagsOf) : null), wordCount },
-});
-const bodyClass = fx?.bodyClass ?? `wp-singular post-template-default single single-post postid-${fx?.id ?? 0} single-format-standard wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-center slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover featured-image-active`;
-const articleClass = fx?.articleClass ?? `post-${fx?.id ?? 0} post type-post status-publish format-standard has-post-thumbnail hentry ${categories.map((c) => "category-" + c.slug).join(" ")} no-featured-image-padding`;
 ---
-{pageEntry ? <Page page={pageEntry} slug={slug} /> : <SE head={head} mergedHeader share={floatingShare(title, canonical)} title={`${title} - Social Europe`} bodyClass={bodyClass}>
-	<Fragment slot="hero">
-		<div class="gb-element-69a233b0 se-hero" style={`--inline-bg-image: url('${heroBg}') `}>
-<div class="gb-element-b51a43b9 se-hero__inner">
-<div class="gb-element-67ee49a5 se-hero__text">
-<h1 class="gb-text gb-text-2a6c1c0b se-hero__title" set:html={escapeHtml(title)}></h1>
-<p class="gb-text gb-text-8f3f3cac se-hero__dek" set:html={escapeHtml(dek)}></p>
-<Fragment set:html={heroByline(bylines)} />
-<p class="gb-text gb-text-e6fb2f1b se-hero__date">{dateStr}</p>
-</div>
-</div>
-</div>
-	</Fragment>
-	<article id={`post-${fx?.id ?? 0}`} class={articleClass} itemtype="https://schema.org/CreativeWork" itemscope>
-		<div class="inside-article">
-			<div class="entry-content" itemprop="text">
-				<Fragment set:html={bodyHtml} />
-			</div>
-			<Fragment set:html={afterContent} />
-		</div>
-	</article>
-	<Fragment slot="sidebar" set:html={sidebar} />
-	<Fragment slot="after" set:html={fx?.relBand ?? ""} />
-</SE>}
+{post ? <Article post={post as never} /> : <Page page={page as never} />}

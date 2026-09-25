@@ -1,0 +1,12 @@
+/* Bridge: EmDash's default Portable Text markup -> the GeneratePress/WordPress rules of the frozen stylesheets.
+   (EmDash renders <figure class="emdash-image">, plain <blockquote>, <div class="emdash-html-block">;
+   WordPress rendered .wp-block-image / .wp-block-quote / raw HTML without a wrapper.) */
+.entry-content figure.emdash-image { margin: 0 0 1.5em; }
+.entry-content figure.emdash-image img { box-sizing: border-box; height: auto; max-width: 100%; vertical-align: bottom; }
+.entry-content figure.emdash-image figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; color: inherit; }
+.entry-content figure.emdash-image--align-center { text-align: center; }
+.entry-content figure.emdash-image--align-left { float: left; margin: .5em 1em .5em 0; }
+.entry-content figure.emdash-image--align-right { float: right; margin: .5em 0 .5em 1em; }
+.entry-content blockquote { box-sizing: border-box; overflow-wrap: break-word; }
+.entry-content .emdash-html-block { margin: 0; }
+.entry-content .emdash-html-block > :first-child { margin-top: 0; }

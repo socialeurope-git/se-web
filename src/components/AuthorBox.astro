@@ -1,0 +1,11 @@
+---
+/** Author profile box after the article (one per byline); also the author-archive header. */
+import Avatar from "./Avatar.astro";
+import { authorUrl, type Byline } from "../se/site";
+interface Props { byline: Byline }
+const { byline } = Astro.props;
+const bio = byline.bio ?? "";
+const isHtml = /^\s*<(div|p|ul|ol)\b/.test(bio);
+const credit = (byline.customFields?.photo_credit as string | undefined) ?? null;
+---
+<div class="se-author-profile-box se-author-profile"><h4 class="se-box-header">AUTHOR PROFILE</h4><div class="se-box-inner"><div class="se-author-avatar"><Avatar byline={byline} eager />{credit && <Fragment set:html={credit} />}</div><div class="se-author-text"><h3 class="se-author-name-title"><a href={authorUrl(byline.slug)}>{byline.displayName}</a></h3><div class="se-author-bio-text">{bio && (isHtml ? <Fragment set:html={bio} /> : <p>{bio}</p>)}</div></div></div></div>

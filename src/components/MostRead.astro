@@ -1,0 +1,7 @@
+---
+/** Homepage "Most Read" (snippet 45). */
+import { postUrl, credits, joinNames, type Entry } from "../se/site";
+interface Props { entries: Entry[] }
+const { entries } = Astro.props;
+---
+{entries.length > 0 && <section class="se-most" aria-labelledby="se-most-label"><div class="grid-container se-most__inner"><div class="se-most__head"><h2 id="se-most-label" class="se-most__label">Most Read</h2><span class="se-most__meta">Past seven days</span></div><ol class="se-most__list">{entries.map((e, i) => <li><a class="se-most__item" href={postUrl(e.id)}><span class="se-most__rank" aria-hidden="true">{i + 1}</span><span class="se-most__body"><span class="se-most__title">{e.data.title}</span><span class="se-most__by">{joinNames(credits(e).map((b) => b.displayName))}</span></span></a></li>)}</ol></div></section>}

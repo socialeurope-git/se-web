@@ -1,13 +1,9 @@
 import type { APIRoute } from "astro";
+import { getBylineBySlug } from "emdash";
 import { buildFeed, rss } from "../../../se/feed";
-import { authors } from "../../../se/data";
-import { fixtureForSlug } from "../../../se/data";
-/** author feed: posts whose bylines include the author (co-authors included). */
+/** author feed: posts credited to the byline (co-authors included). */
 export const GET: APIRoute = async ({ params }) => {
-	const slug = params.slug!; const a = authors[slug];
-	const has = (post: { id: string; data: Record<string, unknown> }) => {
-		const fx = fixtureForSlug(post.id); const bl = fx?.bylines?.length ? fx.bylines : ((post.data.bylines ?? []) as { byline: { slug: string } }[]).map((c) => ({ slug: c.byline.slug }));
-		return bl.some((b) => b.slug === slug);
-	};
-	return rss(await buildFeed({ filter: has, selfHref: `https://www.socialeurope.eu/author/${slug}/feed`, titleSuffix: ` » Posts by ${a?.name ?? slug} Feed` }));
+	const b = (await getBylineBySlug(params.slug!)) as { id: string; displayName: string; translationGroup?: string | null } | null;
+	if (!b) return new Response(null, { status: 404 });
+	return rss(await buildFeed({ where: { byline: b.translationGroup ?? b.id }, selfHref: `https://www.socialeurope.eu/author/${params.slug}/feed`, titleSuffix: ` » Posts by ${b.displayName} Feed` }));
 };

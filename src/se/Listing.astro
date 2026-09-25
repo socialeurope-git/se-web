@@ -1,47 +1,44 @@
 ---
-/** Shared listing renderer for home / category / tag / author pages. */
+/** Archive pages (home, category, tag, author) from EmDash queries: 15 cards + 14 list items on the homepage,
+ *  16 cards on term/author archives, offset pagination with Prev/Next like the live GenerateBlocks loop. */
 import SE from "../layouts/SE.astro";
-import { listPosts, cardHtml, firstPostHtml, moreList, archiveNav, authorArchiveHeader, type ListingKind } from "./listing";
-import { authors } from "./data";
-import { escapeHtml } from "./format";
-import { renderHead } from "./head";
-import fs from "node:fs";
-import path from "node:path";
-const termSeo: Record<string, string> = (() => { const f = path.join(process.cwd(), "archive", "term-seo.json"); return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : {}; })();
+import Card from "../components/Card.astro";
+import MoreList from "../components/MoreList.astro";
+import ArchiveNav from "../components/ArchiveNav.astro";
+import AuthorBox from "../components/AuthorBox.astro";
+import MostRead from "../components/MostRead.astro";
+import { mostRead } from "./queries";
+import { SITE, SITE_TITLE, SITE_DESCRIPTION, type Entry, type Term, type Byline } from "./site";
 import sidebar from "./partials/sidebar.html?raw";
 import sidebarHome from "./partials/sidebar-home.html?raw";
-import seMost from "./partials/home-se-most.html?raw";
 import seBooks from "./partials/home-se-books.html?raw";
+export type ListingKind = "home" | "category" | "tag" | "author";
+interface Props { kind: ListingKind; slug?: string | null; page: number; term?: Term | null; byline?: Byline | null; entries: Entry[]; hasNext: boolean }
+const { kind, slug = null, page, term = null, byline = null, entries: shown, hasNext } = Astro.props;
+const cards = kind === "home" && page === 1 ? shown.slice(0, 15) : shown;
+const more = kind === "home" && page === 1 ? shown.slice(15) : [];
 
-interface Props { kind: ListingKind; slug?: string | null; page: number }
-const { kind, slug = null, page } = Astro.props;
-const { ids, total, pages, term, authorId } = listPosts(kind, slug, page);
-if ((kind !== "home" && !ids.length && page === 1) || page > pages) return new Response(null, { status: 404 });
-
-const base = kind === "home" ? "https://www.socialeurope.eu" : kind === "author" ? `https://www.socialeurope.eu/author/${slug}` : `https://www.socialeurope.eu/${kind}/${slug}`;
+const base = kind === "home" ? SITE : kind === "author" ? `${SITE}/author/${slug}` : `${SITE}/${kind}/${slug}`;
 const canonical = page === 1 ? (kind === "home" ? `${base}/` : base) : `${base}/page/${page}`;
+const prev = page <= 1 ? null : page === 2 ? (kind === "home" ? SITE : base) : `${base}/page/${page - 1}`;
+const next = hasNext ? `${base}/page/${page + 1}` : null;
 const common = "wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-left generate-columns-activated slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover";
-let bodyClass = "", title = "", header = "", description: string | null = null;
-if (kind === "home") { bodyClass = `home blog${page > 1 ? ` paged` : ""} ${common}${page > 1 ? ` paged-${page}` : ""}`; title = page > 1 ? `Social Europe - Page ${page}` : "Social Europe"; description = "Social Europe is an award-winning digital media publisher driven by the core values of freedom, sustainability and equality."; }
-else if (kind === "category") { bodyClass = `archive category category-${slug} category-${term!.id} ${common}`; title = `Category: ${term!.name}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = `<header class="page-header" aria-label="Page">\n\t\t\t\n\t\t\t<h1 class="page-title">\n\t\t\t\t${escapeHtml(term!.name)}\t\t\t</h1>\n\n\t\t\t<div class="taxonomy-description"><p>${term!.description}</p>\n</div>\t\t</header>`; description = term!.description; }
-else if (kind === "tag") { bodyClass = `archive tag tag-${slug} tag-${term!.id} ${common}`; title = `Tag: ${term!.name}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = `<header class="page-header" aria-label="Page">\n\t\t\t\n\t\t\t<h1 class="page-title">\n\t\t\t\t${escapeHtml(term!.name)}\t\t\t</h1>\n\t\t\t\t\t</header>`; }
-else { const a = authors[slug!]; bodyClass = `archive author author-${slug} author-${authorId ?? 0} ${common}`; title = `Author: ${a?.name ?? slug}${page > 1 ? ` - Page ${page}` : ""} - Social Europe`; header = authorArchiveHeader(slug!); description = a?.bio ?? null; }
-
-// The homepage shows the newest post in the full-width "first post" template on page 1 only; paged views are plain cards.
-const SITE_DESC = "Social Europe is an award-winning digital publisher offering freely accessible expert analysis and informed debate on political, economic and social issues.";
-const prev = page <= 1 ? null : page === 2 ? (kind === "home" ? "https://www.socialeurope.eu" : base) : `${base}/page/${page - 1}`;
-const next = page < pages ? `${base}/page/${page + 1}` : null;
-const a = kind === "author" ? authors[slug!] : null;
-const head = renderHead(kind === "home"
-	? { kind: "home", title, ogTitle: title, canonical, description: SITE_DESC, prev, next, publisherFull: false, aboutOrg: true }
-	: kind === "author"
-	? { kind: "author", title, ogTitle: `Author: ${a?.name ?? slug}`, ogType: "profile", canonical, description: a?.bio ?? null, prev, next, pageType: "CollectionPage", breadcrumbs: [{ name: `Author: ${a?.name ?? slug}` }], feed: { title: `Posts by ${a?.name ?? slug} Feed`, href: `${base}/feed` }, jsonLink: authorId ? `https://www.socialeurope.eu/wp-json/wp/v2/users/${authorId}` : null, publisherFull: true }
-	: { kind, title, ogTitle: `${kind === "category" ? "Category" : "Tag"}: ${term!.name}`, canonical, description: kind === "category" ? (termSeo[slug!] ?? term!.description) : null, prev, next, pageType: "CollectionPage", breadcrumbs: [{ name: `${kind === "category" ? "Category" : "Tag"}: ${term!.name}` }], feed: { title: `${term!.name} ${kind === "category" ? "Category" : "Tag"} Feed`, href: `${base}/feed` }, jsonLink: `https://www.socialeurope.eu/wp-json/wp/v2/${kind === "category" ? "categories" : "tags"}/${term!.id}`, publisherFull: true });
-const cards = kind === "home" && page === 1 ? [firstPostHtml(ids[0]), ...ids.slice(1).map(cardHtml)] : ids.map(cardHtml);
-const mainHtml = `<div class="generate-columns-container ">${header}${cards.join("\n")}</div><!-- .generate-columns-contaier -->\n${kind === "home" && page === 1 ? moreList() : ""}\n${archiveNav(base, page, pages)}`;
+const paged = page > 1 ? ` - Page ${page}` : "";
+const bodyClass = kind === "home" ? `home blog${page > 1 ? ` paged paged-${page}` : ""} ${common}` : kind === "author" ? `archive author author-${slug} ${common}` : `archive ${kind} ${kind}-${slug} ${common}`;
+const title = kind === "home" ? (page > 1 ? `${SITE_TITLE}${paged}` : SITE_TITLE) : kind === "author" ? `Author: ${byline!.displayName}${paged} - ${SITE_TITLE}` : `${kind === "category" ? "Category" : "Tag"}: ${term!.label}${paged} - ${SITE_TITLE}`;
+const description = kind === "home" ? SITE_DESCRIPTION : kind === "author" ? byline!.bio : kind === "category" ? (term!.description ?? null) : null;
+const feed = kind === "home" ? null : { title: kind === "author" ? `Posts by ${byline!.displayName} Feed` : `${term!.label} ${kind === "category" ? "Category" : "Tag"} Feed`, href: `${base}/feed` };
+const top = kind === "home" && page === 1 ? await mostRead(10) : [];
 ---
-<SE head={head} title={title} bodyClass={bodyClass}>
-	<Fragment set:html={mainHtml} />
+<SE title={title} description={description} canonical={canonical} prev={prev} next={next} feed={feed} bodyClass={bodyClass} siteTitleHeading={kind === "home" && page === 1}>
+	<div class="generate-columns-container ">
+		{kind === "category" && <header class="page-header" aria-label="Page"><h1 class="page-title">{term!.label}</h1>{term!.description && <div class="taxonomy-description"><p>{term!.description}</p></div>}</header>}
+		{kind === "tag" && <header class="page-header" aria-label="Page"><h1 class="page-title">{term!.label}</h1></header>}
+		{kind === "author" && <AuthorBox byline={byline!} />}
+		{cards.map((e, i) => <Card entry={e} variant={kind === "home" && page === 1 && i === 0 ? "first" : "grid"} />)}
+	</div>
+	{more.length > 0 && <MoreList entries={more} />}
+	<ArchiveNav prev={prev} next={next} />
 	<Fragment slot="sidebar" set:html={kind === "home" ? sidebarHome : sidebar} />
-	{kind === "home" && page === 1 && <Fragment slot="after" set:html={seMost + seBooks} />}
+	{kind === "home" && page === 1 && <Fragment slot="after"><MostRead entries={top} /><Fragment set:html={seBooks} /></Fragment>}
 </SE>

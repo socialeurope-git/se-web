@@ -1,0 +1,8 @@
+---
+/** "Related Reading" widget after paragraph 5 (snippet 41). */
+import RelCard from "./RelCard.astro";
+import { categoryUrl, type Entry, type Term } from "../se/site";
+interface Props { entries: Entry[]; category?: Term }
+const { entries, category } = Astro.props;
+---
+{entries.length > 0 && <aside class="se-rel-inline" aria-label="Related articles"><div class="se-rel-head"><h2 class="se-rel-label">Related Reading</h2>{category && <a class="se-rel-more" href={categoryUrl(category.slug)}>More on {category.label} +</a>}</div><div class="se-rel-grid">{entries.map((e) => <RelCard entry={e} />)}</div></aside>}

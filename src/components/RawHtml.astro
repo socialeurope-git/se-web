@@ -1,0 +1,11 @@
+---
+/** Portable Text `htmlBlock` renderer for the imported WordPress HTML (accordions, styled headings, embeds):
+ *  EmDash's default sanitises the block (drops <button>, aria-*, style, hidden), which breaks the Key Insights accordions.
+ *  The imported HTML is the site's own content, rendered as-is; accordion panels are closed server-side like the live snippet. */
+interface Props { node: { _type: "htmlBlock"; _key: string; html: string } }
+const { node } = Astro.props;
+const html = (node?.html ?? "")
+	.replace(/<div\b(?![^>]*\shidden(?=[\s>=]))([^>]*\bclass="[^"]*\bwp-block-accordion-panel\b[^"]*")/g, '<div hidden="until-found"$1')
+	.replace(/https:\/\/www\.youtube\.com\/embed\//g, "https://www.youtube-nocookie.com/embed/");
+---
+<Fragment set:html={html} />

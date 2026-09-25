@@ -1,0 +1,8 @@
+---
+/** Band before the footer: four related articles + the Most Read list (snippet 41). */
+import RelCard from "./RelCard.astro";
+import { categoryUrl, postUrl, credits, joinNames, type Entry, type Term } from "../se/site";
+interface Props { entries: Entry[]; mostRead: Entry[]; category?: Term }
+const { entries, mostRead, category } = Astro.props;
+---
+<section class="se-rel-band" aria-label="More from Social Europe"><div class="se-rel-band__inner">{entries.length > 0 && <div class="se-rel-row"><div class="se-rel-head"><h2 class="se-rel-label">More Related Reading</h2>{category && <a class="se-rel-more" href={categoryUrl(category.slug)}>More on {category.label} +</a>}</div><div class="se-rel-grid">{entries.map((e) => <RelCard entry={e} />)}</div></div>}{mostRead.length > 0 && <div class="se-rel-row"><div class="se-rel-head"><h2 class="se-rel-label">Most Read</h2><span class="se-rel-meta">Past seven days</span></div><ol class="se-rel-list">{mostRead.map((e, i) => <li><a class="se-rel-item" href={postUrl(e.id)}><span class="se-rel-rank" aria-hidden="true">{i + 1}</span><span class="se-rel-item__body"><span class="se-rel-item__title">{e.data.title}</span><span class="se-rel-card__by">{joinNames(credits(e).map((b) => b.displayName))}</span></span></a></li>)}</ol></div>}</div></section>

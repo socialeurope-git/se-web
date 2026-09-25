@@ -1,0 +1,8 @@
+---
+/** Homepage "More opinion and analysis" list (snippet 43). */
+import AuthorLinks from "./AuthorLinks.astro";
+import { postUrl, credits, type Entry } from "../se/site";
+interface Props { entries: Entry[] }
+const { entries } = Astro.props;
+---
+<section class="se-more" aria-labelledby="se-more-label"><div class="se-more__head"><h2 id="se-more-label" class="se-more__label">More opinion and analysis</h2></div><ul class="se-more__list">{entries.map((e) => <li class="se-more__item"><a class="se-more__title" href={postUrl(e.id)}>{e.data.title}</a><div class="se-more__by"><AuthorLinks bylines={credits(e)} /></div></li>)}</ul></section>

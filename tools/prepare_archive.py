@@ -2,7 +2,7 @@
 """Build import + fixture files from the fetched archive.
 Inputs : archive/{posts,pages,users,media,terms,coauthors}.json and rendered pages (archive/live/<id>.html.gz, or a dir of <id>.html)
 Outputs: archive/wxr-<name>.xml (WXR with block-comment wrapping so the converter keeps figures/accordions verbatim),
-         src/se/data/authors.json (slug -> name, bio, url, avatarHtml), archive/fixtures/<id>.json (per-post live widgets)
+         archive/authors.json (slug -> name, bio, url, avatarHtml; import data for sync_bylines.py), archive/fixtures/<id>.json (per-post live widgets)
 Usage  : prepare_archive.py <archive_dir> <live_dir> <name> [ids.json]"""
 import json, os, re, sys, gzip, html
 from datetime import datetime, timezone
@@ -224,7 +224,7 @@ xml=re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]','',xml)   # control characters are no
 out=f'{A}/wxr-{NAME}.xml'; open(out,'w').write(xml)
 import xml.dom.minidom as md; md.parseString(xml.encode())
 # merge authors into the theme data file (keep existing avatar markup if already captured)
-ap=f'{ROOT}/src/se/data/authors.json'; existing=json.load(open(ap)) if os.path.exists(ap) else {}
+ap=f'{A}/authors.json'; existing=json.load(open(ap)) if os.path.exists(ap) else {}
 for s,a in authors.items():
     e=existing.setdefault(s,a)
     for k,v in a.items():

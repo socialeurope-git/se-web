@@ -51,6 +51,9 @@ curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -H "Content-Type: applicatio
 # Bylines = source of truth for authorship: CAP co-author bylines, bios, websites, portrait media; full author list per post
 python3 tools/sync_bylines.py | tail -2
 
+# Site data the theme reads from EmDash: settings, menus, page template fields, SEO panel values
+python3 tools/setup_site.py | grep -v '^field'
+
 # Henning's own admin account: the dev server prints the invite e-mail with the accept link (no mail provider locally)
 curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d '{"email":"h.meyer@socialeurope.eu","name":"Henning Meyer","role":50}' http://127.0.0.1:4321/_emdash/api/auth/invite >/dev/null
 echo "invite for h.meyer@socialeurope.eu requested: open the accept link from the dev-server log (search 'invite/accept'), then register a passkey"

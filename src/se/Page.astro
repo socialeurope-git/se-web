@@ -1,26 +1,27 @@
 ---
-/** Static pages: default template (entry-header + content) and the "SE Editorial" template (intro section, content, optional CTA). */
+/** Static pages: default template (entry header + content) or the "SE Editorial" template (intro section, content, optional CTA). */
+import { getSeoMeta } from "emdash";
+import { PortableText } from "emdash/ui";
 import SE from "../layouts/SE.astro";
-import { renderBlocks } from "./render";
-import { escapeHtml } from "./format";
-import { pageFixture } from "./page";
-import { renderHead } from "./head";
+import RawHtml from "../components/RawHtml.astro";
+import { SITE, SITE_TITLE, postUrl, absolute, type Entry } from "./site";
 import sidebar from "./partials/sidebar.html?raw";
-interface Props { page: { id: string; data: Record<string, unknown> }; slug: string }
-const { page, slug } = Astro.props;
-const fx = pageFixture(slug);
-const title = page.data.title as string;
-const body = renderBlocks(page.data.content as never[]);
-const editorial = (fx?.template ?? "") === "se-editorial";
-const bodyClass = fx?.bodyClass ?? `wp-singular page-template-default page page-id-${fx?.id ?? 0} wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-left slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover`;
-const articleClass = fx?.articleClass ?? `post-${fx?.id ?? 0} page type-page status-publish`;
-const canonical = `https://www.socialeurope.eu/${slug}`;
-const head = renderHead({ kind: "page", title: fx?.headTitle ?? `${title} - Social Europe`, ogTitle: title, canonical, description: fx?.description ?? null, ogDescription: fx?.ogDescription ?? null, image: fx?.ogImage ? { url: fx.ogImage, w: fx.ogImageW, h: fx.ogImageH, alt: fx.ogImageAlt } : null, oembedUrl: canonical, jsonLink: fx ? `https://www.socialeurope.eu/wp-json/wp/v2/pages/${fx.id}` : null, breadcrumbs: [{ name: title }], readAction: true, publisherFull: true });
-const main = editorial
-	? `${fx?.introHtml ?? ""}\n<article id="post-${fx?.id ?? 0}" class="${articleClass}">\n<div class="inside-article">\n<div class="entry-content">\n${body}\n</div>\n</div>\n</article>\n${fx?.ctaHtml ?? ""}`
-	: `<article id="post-${fx?.id ?? 0}" class="${articleClass}">\n<div class="inside-article">\n<header class="entry-header">\n<h1 class="entry-title">${escapeHtml(title)}</h1>\n</header>\n${fx?.featuredHtml ?? ""}\n<div class="entry-content">\n${body}\n</div>\n</div>\n</article>`;
+import cta from "./partials/se-ed-cta.html?raw";
+interface Props { page: Entry }
+const { page } = Astro.props;
+const d = page.data; const slug = page.id; const title = d.title;
+const editorial = d.template === "se-editorial";
+const hasSidebar = !!d.sidebar;
+const canonical = postUrl(slug);
+const seo = getSeoMeta(page as never, { siteTitle: SITE_TITLE, siteUrl: SITE, path: `/${slug}`, titleSeparator: " - ", defaultOgImage: absolute(d.featured_image?.src) ?? undefined });
+const pt = { type: { htmlBlock: RawHtml } };
+const bodyClass = `wp-singular ${editorial ? "page-template page-template-se-editorial" : "page-template-default"} page wp-embed-responsive wp-theme-generatepress ${editorial ? "post-image-below-header post-image-aligned-center" : "post-image-above-header post-image-aligned-left"} slideout-enabled slideout-mobile sticky-menu-slide ${editorial ? "se-editorial " : ""}${hasSidebar ? "right-sidebar" : "no-sidebar"} nav-float-right one-container header-aligned-left dropdown-hover`;
 ---
-<SE head={head} stylesheet={fx?.hasSidebar ? "site" : "nosidebar"} title={fx?.headTitle ?? `${title} - Social Europe`} bodyClass={bodyClass}>
-	<Fragment set:html={main} />
-	{fx?.hasSidebar && <Fragment slot="sidebar" set:html={sidebar} />}
+<SE title={seo.title} description={seo.description} canonical={canonical} image={seo.ogImage} robots={seo.robots} content={{ collection: "pages", id: d.id, slug }} stylesheet={hasSidebar ? "site" : "nosidebar"} bodyClass={bodyClass}>
+	{editorial
+		? <><section class="se-ed-intro"><div class="se-ed-wrap"><h1 {...page.edit?.intro_title}>{(d.intro_title as string) || title}</h1>{d.excerpt && <p class="se-dek" {...page.edit?.excerpt}>{d.excerpt}</p>}</div></section>
+			<article id={`post-${d.id}`} class="page type-page status-publish"><div class="inside-article"><div class="entry-content"><PortableText value={d.content as never} components={pt} /></div></div></article>
+			{d.show_cta && <Fragment set:html={cta} />}</>
+		: <article id={`post-${d.id}`} class="page type-page status-publish"><div class="inside-article"><header class="entry-header"><h1 class="entry-title" {...page.edit?.title}>{title}</h1></header><div class="entry-content"><PortableText value={d.content as never} components={pt} /></div></div></article>}
+	{hasSidebar && <Fragment slot="sidebar" set:html={sidebar} />}
 </SE>

@@ -1,0 +1,71 @@
+---
+/** Single post: hero, Portable Text body with the newsletter box after paragraph 10 and the related widget after
+ *  paragraph 5 (measured on the live site; shorter posts get them after the last paragraph), author boxes, partner
+ *  banner, membership box, sidebar, related band. */
+import { getSeoMeta } from "emdash";
+import { PortableText } from "emdash/ui";
+import { getImage } from "astro:assets";
+import SE from "../layouts/SE.astro";
+import HeroByline from "../components/HeroByline.astro";
+import AuthorBox from "../components/AuthorBox.astro";
+import RelatedInline from "../components/RelatedInline.astro";
+import RelatedBand from "../components/RelatedBand.astro";
+import RawHtml from "../components/RawHtml.astro";
+import { relatedPosts, mostRead } from "./queries";
+import { SITE, SITE_TITLE, postUrl, credits, categoryOf, absolute, type Entry } from "./site";
+import { ordinalDate, berlinIso } from "./format";
+import sidebar from "./partials/sidebar.html?raw";
+import newsletterBox from "./partials/newsletter-box.html?raw";
+import partnerBanner from "./partials/partner-banner.html?raw";
+import membership from "./partials/membership.html?raw";
+import shareTpl from "./partials/ns-floating.tpl.html?raw";
+interface Props { post: Entry }
+const { post } = Astro.props;
+const slug = post.id; const d = post.data;
+const title = d.title; const dek = (d.excerpt as string) ?? "";
+const bylines = credits(post);
+const category = categoryOf(post);
+const fi = d.featured_image;
+const heroBg = fi?.src ? (await getImage({ src: absolute(fi.src)!, width: 1280, height: 720, format: "webp" })).src : "";
+const canonical = postUrl(slug);
+const seo = getSeoMeta(post as never, { siteTitle: SITE_TITLE, siteUrl: SITE, path: `/${slug}`, titleSeparator: " - ", defaultOgImage: absolute(fi?.src) ?? undefined, defaultDescription: dek || undefined });
+const [related, top] = await Promise.all([relatedPosts(category, slug, 7), mostRead(10)]);
+// body segments: the newsletter box goes after paragraph 10 and the related widget after paragraph 5
+const blocks = (d.content ?? []) as { _type: string; style?: string }[];
+const paragraphEnds: number[] = []; blocks.forEach((b, i) => { if (b._type === "block" && (!b.style || b.style === "normal")) paragraphEnds.push(i + 1); });
+const at = (n: number) => paragraphEnds[n - 1] ?? blocks.length;
+const i5 = at(5), i10 = Math.max(at(10), i5);
+const pt = { type: { htmlBlock: RawHtml } };
+const share = shareTpl.replace(/{{TITLE_ENC}}/g, encodeURIComponent(title)).replace(/{{URL_ENC}}/g, encodeURIComponent(canonical));
+const bodyClass = `wp-singular post-template-default single single-post single-format-standard wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-center slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover featured-image-active`;
+---
+<SE title={seo.title} description={seo.description} canonical={canonical} image={seo.ogImage} type="article" robots={seo.robots} content={{ collection: "posts", id: d.id, slug }} published={d.publishedAt ? berlinIso(d.publishedAt) : null} modified={d.updatedAt.toISOString()} author={bylines[0]?.displayName ?? null} mergedHeader share={share} bodyClass={bodyClass}>
+	<Fragment slot="hero">
+		<div class="gb-element-69a233b0 se-hero" style={`--inline-bg-image: url('${heroBg}') `}>
+<div class="gb-element-b51a43b9 se-hero__inner">
+<div class="gb-element-67ee49a5 se-hero__text">
+<h1 class="gb-text gb-text-2a6c1c0b se-hero__title" {...post.edit?.title}>{title}</h1>
+<p class="gb-text gb-text-8f3f3cac se-hero__dek" {...post.edit?.excerpt}>{dek}</p>
+<HeroByline bylines={bylines} />
+<p class="gb-text gb-text-e6fb2f1b se-hero__date">{d.publishedAt ? ordinalDate(d.publishedAt) : ""}</p>
+</div>
+</div>
+</div>
+	</Fragment>
+	<article id={`post-${d.id}`} class:list={["post type-post status-publish format-standard has-post-thumbnail hentry", category && `category-${category.slug}`, "no-featured-image-padding"]} itemtype="https://schema.org/CreativeWork" itemscope>
+		<div class="inside-article">
+			<div class="entry-content" itemprop="text">
+				<PortableText value={blocks.slice(0, i5)} components={pt} />
+				{i5 < i10 ? <><RelatedInline entries={related.slice(0, 3)} category={category} /><PortableText value={blocks.slice(i5, i10)} components={pt} /><Fragment set:html={newsletterBox} /><PortableText value={blocks.slice(i10)} components={pt} /></>
+					: paragraphEnds.length >= 5 ? <><RelatedInline entries={related.slice(0, 3)} category={category} /><PortableText value={blocks.slice(i5)} components={pt} /><Fragment set:html={newsletterBox} /></>
+					: <><Fragment set:html={newsletterBox} /><RelatedInline entries={related.slice(0, 3)} category={category} /></>}
+				<div class="ns-content-marker" style="display: none;"></div>
+			</div>
+			{bylines.map((b) => <AuthorBox byline={b} />)}
+			<Fragment set:html={partnerBanner} />
+			<Fragment set:html={membership} />
+		</div>
+	</article>
+	<Fragment slot="sidebar" set:html={sidebar} />
+	<Fragment slot="after"><RelatedBand entries={related.slice(3, 7)} mostRead={top} category={category} /></Fragment>
+</SE>

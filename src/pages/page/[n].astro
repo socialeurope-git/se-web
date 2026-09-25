@@ -1,7 +1,11 @@
 ---
 import Listing from "../../se/Listing.astro";
+import { loadListing } from "../../se/queries";
 import Search from "../../se/Search.astro";
 const n = Number(Astro.params.n); if (!Number.isInteger(n) || n < 2) return new Response(null, { status: 404 });
 const q = Astro.url.searchParams.get("s");
+const data = (q !== null && q.trim()) ? null : await loadListing("home", null, n);
+if (!data && !(q !== null && q.trim())) return new Response(null, { status: 404 });
+if (data && Astro.cache?.enabled) Astro.cache.set(data.cacheHint as never);
 ---
-{q !== null && q.trim() ? <Search q={q} page={n} /> : <Listing kind="home" page={n} />}
+{q !== null && q.trim() ? <Search q={q} page={n} /> : <Listing {...data!} />}

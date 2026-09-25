@@ -12,6 +12,10 @@ export interface Page {
   title: string;
   content?: PortableTextBlock[];
   excerpt?: string;
+  template?: string;
+  intro_title?: string;
+  sidebar?: boolean;
+  show_cta?: boolean;
   createdAt: Date;
   updatedAt: Date;
   publishedAt: Date | null;

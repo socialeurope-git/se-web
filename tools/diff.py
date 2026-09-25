@@ -7,7 +7,7 @@ from playwright.async_api import async_playwright
 from PIL import Image, ImageChops, ImageDraw
 OUT, CTRL, CAND, WIDTHS, MAP = sys.argv[1], sys.argv[2], sys.argv[3], [int(w) for w in sys.argv[4].split(',')], json.load(open(sys.argv[5]))
 ids = sys.argv[6:]; os.makedirs(OUT + '/shots', exist_ok=True); os.makedirs(OUT + '/diffs', exist_ok=True)
-MASK = "#right-sidebar{visibility:hidden}"   # ad rotation is random per load
+MASK = "#right-sidebar{visibility:hidden}" + os.environ.get('EXTRA_MASK', '')   # ad rotation is random per load; EXTRA_MASK hides data-driven widgets (related, most read)
 async def shoot(page, url, out):
     await page.goto(url, wait_until='load', timeout=60000)
     await page.add_style_tag(content=MASK)
@@ -36,7 +36,7 @@ async def main():
         browser = await pw.chromium.launch(); sem = asyncio.Semaphore(3)
         async def job(pid, w):
             async with sem:
-                ctx = await browser.new_context(viewport={'width': w, 'height': 900}); await ctx.add_init_script("Math.random=()=>0.5; document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style'); s.textContent='#right-sidebar{visibility:hidden}'; document.head.appendChild(s);});"); page = await ctx.new_page()
+                ctx = await browser.new_context(viewport={'width': w, 'height': 900}); await ctx.add_init_script("Math.random=()=>0.5; document.addEventListener('DOMContentLoaded',()=>{const s=document.createElement('style'); s.textContent='#right-sidebar{visibility:hidden}'+''; document.head.appendChild(s);});"); page = await ctx.new_page()
                 key = f'{pid}-{w}'
                 try:
                     a = f'{OUT}/shots/{key}-control.png'; b = f'{OUT}/shots/{key}-candidate.png'

@@ -1,10 +1,14 @@
 ---
-/** Social Europe page skeleton: GeneratePress markup frozen from the live site (spike 1). Two frozen stylesheets: WordPress emitted
- *  merged-header rules (white nav icons) only on single posts and different column widths for pages without a sidebar, so there
- *  are three frozen stylesheets: article, site (with sidebar) and nosidebar. */
+/** Social Europe page skeleton (GeneratePress markup of the live site) on EmDash: site settings, menus, SEO head,
+ *  page contributions and visual editing come from EmDash; the header/footer/sidebar markup is the theme's own. */
+import { getMenu, getSiteSettings } from "emdash";
+import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
+import { createPublicPageContext } from "emdash/page";
+import { SITE, SITE_TITLE } from "../se/site";
+import "../styles/se-emdash.css";
 import headerInner from "../se/partials/header-inner.html?raw";
-import footer from "../se/partials/footer.html?raw";
-import slideout from "../se/partials/slideout.html?raw";
+import footerTpl from "../se/partials/footer.html?raw";
+import slideoutTpl from "../se/partials/slideout.html?raw";
 import slideoutOverlay from "../se/partials/slideout-overlay.html?raw";
 import nsHighlight from "../se/partials/ns-highlight.html?raw";
 import gpScripts from "../se/partials/gp-inline-scripts.html?raw";
@@ -12,20 +16,44 @@ import awrm from "../se/partials/awrm-rotation.html?raw";
 import plausible from "../se/partials/head-plausible.html?raw";
 import icons from "../se/partials/head-icons.html?raw";
 
-interface Props { head: string; share?: string; title: string; description?: string | null; canonical: string; bodyClass: string; image?: string | null; type?: "website" | "article"; content?: { collection: string; id: string; slug?: string | null }; mergedHeader?: boolean; robots?: string | null; stylesheet?: "article" | "site" | "nosidebar"; }
-const { head, title, bodyClass, share, mergedHeader = false, stylesheet } = Astro.props;
+interface Props {
+	title: string; description?: string | null; canonical: string; image?: string | null; type?: "website" | "article"; robots?: string | null;
+	content?: { collection: string; id: string; slug?: string | null }; published?: string | null; modified?: string | null; author?: string | null;
+	prev?: string | null; next?: string | null; feed?: { title: string; href: string } | null;
+	bodyClass: string; mergedHeader?: boolean; siteTitleHeading?: boolean; stylesheet?: "article" | "site" | "nosidebar"; share?: string;
+}
+const { title, description = null, canonical, image = null, type = "website", robots = null, content, published = null, modified = null, author = null, prev = null, next = null, feed = null, bodyClass, share, mergedHeader = false, stylesheet, siteTitleHeading = false } = Astro.props;
 const css = stylesheet ?? (mergedHeader ? "article" : "site");
+const settings = await getSiteSettings();
+const siteName = settings.title || SITE_TITLE;
+const [primary, f1, f2, f3] = await Promise.all([getMenu("primary"), getMenu("footer-1"), getMenu("footer-2"), getMenu("footer-3")]);
+type Item = { id: string; label: string; url: string; target?: string | null };
+const li = (items: Item[] | undefined) => (items ?? []).map((it) => `<li class="menu-item menu-item-type-custom menu-item-object-custom"><a${it.target ? ` target="${it.target}"` : ""} href="${it.url}">${it.label}</a></li>`).join("\n");
+const col = (items: Item[] | undefined) => (items ?? []).map((it) => `<aside class="widget inner-padding widget_block widget_text">\n<p class="wp-block-paragraph"><a href="${it.url}"${it.target ? ` target="${it.target}" rel="noreferrer noopener"` : ""}>${it.label}</a></p>\n</aside>`).join("");
+// WordPress marks the site title up as <h1> on the front page and <p> everywhere else
+const header = headerInner.replace("{{PRIMARY_MENU}}", li(primary?.items as Item[])).replace(/<p class="main-title"([^>]*)>([\s\S]*?)<\/p>/, siteTitleHeading ? '<h1 class="main-title"$1>$2</h1>' : '<p class="main-title"$1>$2</p>');
+const slideout = slideoutTpl.replace("{{PRIMARY_MENU}}", li(primary?.items as Item[]));
+const footer = footerTpl.replace("{{FOOTER_1}}", col(f1?.items as Item[])).replace("{{FOOTER_2}}", col(f2?.items as Item[])).replace("{{FOOTER_3}}", col(f3?.items as Item[]) + `<aside class="widget inner-padding widget_block widget_text">\n<p class="wp-block-paragraph">Social Europe ISSN 2628-7641</p>\n</aside>`);
+const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "custom", pageType: type, title, pageTitle: title, description, canonical, image, content, seo: { ogImage: image, robots }, articleMeta: { publishedTime: published, modifiedTime: modified, author }, siteName, siteUrl: SITE });
 ---
 <!DOCTYPE html>
 <html lang="en-GB">
 <head>
-<Fragment set:html={head} />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{title}</title>
+<EmDashHead page={pageCtx} />
+{prev && <link rel="prev" href={prev} />}
+{next && <link rel="next" href={next} />}
+<link rel="alternate" type="application/rss+xml" title={`${siteName} » Feed`} href={`${SITE}/feed`} />
+{feed && <link rel="alternate" type="application/rss+xml" title={`${siteName} » ${feed.title}`} href={feed.href} />}
 <link rel="stylesheet" href={`/se/frozen-${css}.css`} />
 <Fragment set:html={plausible} />
 <Fragment set:html={icons} />
 </head>
 <body class={bodyClass}>
-{mergedHeader ? <div class="header-wrap"><Fragment set:html={headerInner} /></div> : <Fragment set:html={headerInner} />}
+<EmDashBodyStart page={pageCtx} />
+{mergedHeader ? <div class="header-wrap"><Fragment set:html={header} /></div> : <Fragment set:html={header} />}
 <slot name="hero" />
 <div id="page" class="site grid-container container hfeed">
 	<div id="content" class="site-content">
@@ -48,5 +76,6 @@ const css = stylesheet ?? (mergedHeader ? "article" : "site");
 <script is:inline src="/se/menu.min.js"></script>
 <script is:inline src="/se/accordion.js"></script>
 {mergedHeader && <Fragment set:html={nsHighlight} />}
+<EmDashBodyEnd page={pageCtx} />
 </body>
 </html>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Phase 2: make EmDash bylines the source of truth for authorship.
 
-1. Every author in src/se/data/authors.json exists as a byline (guest, no login),
+1. Every author in archive/authors.json exists as a byline (guest, no login),
    with bio + website where the WP profile had them.
 2. Every post carries exactly the Co-Authors-Plus author list (archive/coauthors.json),
    in the CAP order, as explicit bylines.
@@ -45,7 +45,7 @@ def plain_bio(html):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
-    authors = json.load(open(ROOT / "src/se/data/authors.json"))
+    authors = json.load(open(ROOT / "archive/authors.json"))
     coauthors = json.load(open(ROOT / "archive/coauthors.json"))
     posts = {p["id"]: p["slug"] for p in json.load(open(ROOT / "archive/posts.json"))}
     db = sqlite3.connect(f"file:{ROOT/'data.db'}?mode=ro", uri=True)
