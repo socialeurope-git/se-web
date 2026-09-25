@@ -53,6 +53,9 @@ def main():
     current = {}
     for cid, bid, so in db.execute("select content_id, byline_id, sort_order from _emdash_content_bylines where collection_slug='posts' order by sort_order"):
         current.setdefault(cid, []).append(bid)
+    db.close()  # an open reader blocks the dev server's writes
+    def status_of(eid):
+        d = sqlite3.connect(f"file:{ROOT/'data.db'}?mode=ro", uri=True); r = d.execute("select status, draft_revision_id from ec_posts where id=?", (eid,)).fetchone(); d.close(); return r
 
     # 1. bylines
     by_slug = {}; cursor = None
@@ -61,17 +64,28 @@ def main():
         for it in d["items"]: by_slug[it["slug"]] = it
         cursor = d.get("nextCursor")
         if not cursor: break
+    # portraits: the media import (archive/media-import.json) registered every upload; map the avatar original to its media id
+    media_by_url = {}
+    mi = ROOT / "archive/media-import.json"
+    if mi.exists():
+        for it in json.load(open(mi))["imported"]: media_by_url[it["originalUrl"]] = it["mediaId"]
+    size_re = re.compile(r"-\d+x\d+(?=\.[a-z0-9]+$)", re.I)
+    def avatar_media(au):
+        m = re.search(r'<img[^>]+src="([^"]+)"', au.get("avatarHtml") or "")
+        if not m: return None
+        u = size_re.sub("", m.group(1).split("?")[0])
+        return media_by_url.get(u)
     created = updated = 0
     for slug, au in authors.items():
-        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": True}
+        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": True, "avatarMediaId": avatar_media(au)}
         ex = by_slug.get(slug)
         if not ex:
             print("create", slug); created += 1
             if not a.dry_run: by_slug[slug] = api("POST", "/_emdash/api/admin/bylines", body)["data"]
-        elif (ex.get("bio") or None) != body["bio"] or (ex.get("websiteUrl") or None) != body["websiteUrl"] or ex["displayName"] != au["name"]:
+        elif (ex.get("bio") or None) != body["bio"] or (ex.get("websiteUrl") or None) != body["websiteUrl"] or ex["displayName"] != au["name"] or (ex.get("avatarMediaId") or None) != body["avatarMediaId"]:
             updated += 1
             if not a.dry_run: api("PUT", f"/_emdash/api/admin/bylines/{ex['id']}", {k: v for k, v in body.items() if k != "slug"})
-    print(f"bylines: {created} created, {updated} updated, {len(by_slug)} total")
+    print(f"bylines: {created} created, {updated} updated, {len(by_slug)} total, {sum(1 for a in authors.values() if avatar_media(a))} with portrait media")
 
     # 2. post credits
     changed = skipped = 0
@@ -87,7 +101,7 @@ def main():
         changed += 1
         if a.dry_run: continue
         api("PUT", f"/_emdash/api/content/posts/{eid}", {"bylines": [{"bylineId": b} for b in want], "skipRevision": True})
-        st, dr = db.execute("select status, draft_revision_id from ec_posts where id=?", (eid,)).fetchone()
+        st, dr = status_of(eid)
         if st != "published" or dr:
             print("WARNING status changed", slug, st, dr); sys.exit(2)
         if a.limit and changed >= a.limit: break

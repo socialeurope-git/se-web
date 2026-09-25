@@ -119,6 +119,20 @@ def author_from_hero(h):
         if u and not a['bio']: a['bio']=u.get('description','') ; a['name']=u.get('name') or name
     return res
 items=[]; fixtures_written=0; missing_live=0; att_seen=set()
+# Every media item of the site becomes a WXR attachment: EmDash's importer downloads the originals into its
+# storage, registers them in the Media Library and returns an old->new URL map (fresh_import.sh). Featured
+# images link via _thumbnail_id; portraits (Simple Local Avatars uploads) are attachments too.
+def att_item(m):
+    url=m['source_url']; title=html.unescape(re.sub('<[^>]+>','',(m.get('title') or {}).get('rendered','')))
+    cap=html.unescape(re.sub('<[^>]+>','',(m.get('caption') or {}).get('rendered','')))
+    d=m.get('date') or '2014-01-01T00:00:00'
+    return (f'<item><title>{cdata(title or os.path.basename(url))}</title><link>{escape(url)}</link><dc:creator>{cdata("social-europe")}</dc:creator><guid isPermaLink="false">{escape(url)}</guid>'
+            f'<content:encoded>{cdata("")}</content:encoded><excerpt:encoded>{cdata(cap)}</excerpt:encoded><wp:post_id>{m["id"]}</wp:post_id><wp:post_date>{to_gmt(d)}</wp:post_date><wp:post_date_gmt>{to_gmt(d)}</wp:post_date_gmt>'
+            f'<wp:post_name>{escape(m.get("slug") or os.path.splitext(os.path.basename(url))[0])}</wp:post_name><wp:status>inherit</wp:status><wp:post_parent>{m.get("post") or 0}</wp:post_parent><wp:post_type>attachment</wp:post_type>'
+            f'<wp:attachment_url>{escape(url)}</wp:attachment_url><wp:postmeta><wp:meta_key>_wp_attachment_image_alt</wp:meta_key><wp:meta_value>{cdata(m.get("alt_text") or "")}</wp:meta_value></wp:postmeta></item>')
+if only is None:
+    for m in media.values():
+        if m.get('source_url'): items.append(att_item(m)); att_seen.add(m['id'])
 sel=[p for p in posts if (only is None or p['id'] in only)]
 for p in sel:
     pid=p['id']; h=live_html(pid)
@@ -147,9 +161,6 @@ for p in sel:
     t+=''.join(f'<category domain="post_tag" nicename="{tags[x]["slug"]}">{cdata(tags[x]["name"])}</category>' for x in p['tags'] if x in tags)
     meta=''
     fm=p.get('featured_media'); fmedia=media.get(fm)
-    if fmedia and fm not in att_seen:
-        att_seen.add(fm); url=fmedia['source_url']
-        items.append(f'<item><title>{escape(os.path.basename(url))}</title><link>{escape(url)}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">{escape(url)}</guid><content:encoded>{cdata("")}</content:encoded><excerpt:encoded>{cdata("")}</excerpt:encoded><wp:post_id>{fm}</wp:post_id><wp:post_date>{to_gmt(p["date"])}</wp:post_date><wp:post_date_gmt>{to_gmt(p["date"])}</wp:post_date_gmt><wp:post_name>{escape(os.path.splitext(os.path.basename(url))[0])}</wp:post_name><wp:status>inherit</wp:status><wp:post_parent>{pid}</wp:post_parent><wp:post_type>attachment</wp:post_type><wp:attachment_url>{escape(url)}</wp:attachment_url><wp:postmeta><wp:meta_key>_wp_attachment_image_alt</wp:meta_key><wp:meta_value>{cdata(fmedia.get("alt_text") or "")}</wp:meta_value></wp:postmeta></item>')
     if fmedia: meta=f'<wp:postmeta><wp:meta_key>_thumbnail_id</wp:meta_key><wp:meta_value>{fm}</wp:meta_value></wp:postmeta>'
     items.append(f'''<item><title>{cdata(title)}</title><link>{escape(p['link'])}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">https://www.socialeurope.eu/?p={pid}</guid>
 <content:encoded>{cdata(content)}</content:encoded><excerpt:encoded>{cdata(dek)}</excerpt:encoded><wp:post_id>{pid}</wp:post_id><wp:post_date>{to_gmt(p['date'])}</wp:post_date><wp:post_date_gmt>{to_gmt(p['date'])}</wp:post_date_gmt><wp:post_modified>{to_gmt(p['modified'])}</wp:post_modified><wp:post_modified_gmt>{to_gmt(p['modified'])}</wp:post_modified_gmt><wp:comment_status>closed</wp:comment_status><wp:post_name>{escape(p['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>0</wp:post_parent><wp:post_type>post</wp:post_type>{t}{meta}</item>''')
@@ -219,4 +230,4 @@ for s,a in authors.items():
     for k,v in a.items():
         if v and (not e.get(k) or (k in('avatarHtml','avatarBoxHtml') and '<picture' in str(v) and '<picture' not in str(e.get(k)))): e[k]=v
 json.dump(existing,open(ap,'w'),indent=0,ensure_ascii=False)
-print(f'{out}: {len(sel)-missing_live} posts, {len(att_seen)} featured attachments, {sum(1 for pg in pages if only is None or pg["id"] in only)} pages, {len(authors)} authors (total in data file {len(existing)}), fixtures {fixtures_written}, missing live pages {missing_live}, {len(xml)//1024} KB')
+print(f'{out}: {len(sel)-missing_live} posts, {len(att_seen)} attachments, {sum(1 for pg in pages if only is None or pg["id"] in only)} pages, {len(authors)} authors (total in data file {len(existing)}), fixtures {fixtures_written}, missing live pages {missing_live}, {len(xml)//1024} KB')
