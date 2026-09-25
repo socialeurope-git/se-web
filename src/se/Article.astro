@@ -5,16 +5,17 @@
 import { getSeoMeta } from "emdash";
 import { PortableText } from "emdash/ui";
 import { getImage } from "astro:assets";
+import Sidebar from "../components/Sidebar.astro";
 import SE from "../layouts/SE.astro";
 import HeroByline from "../components/HeroByline.astro";
 import AuthorBox from "../components/AuthorBox.astro";
 import RelatedInline from "../components/RelatedInline.astro";
 import RelatedBand from "../components/RelatedBand.astro";
 import RawHtml from "../components/RawHtml.astro";
+import LinkedImage from "../components/LinkedImage.astro";
 import { relatedPosts, mostRead } from "./queries";
 import { SITE, SITE_TITLE, postUrl, credits, categoryOf, absolute, type Entry } from "./site";
 import { ordinalDate, berlinIso } from "./format";
-import sidebar from "./partials/sidebar.html?raw";
 import newsletterBox from "./partials/newsletter-box.html?raw";
 import partnerBanner from "./partials/partner-banner.html?raw";
 import membership from "./partials/membership.html?raw";
@@ -50,7 +51,7 @@ blocks.forEach((b, i) => {
 });
 const at = (n: number) => paragraphEnds[n - 1] ?? blocks.length;
 const i5 = at(5), i10 = Math.max(at(10), i5);
-const pt = { type: { htmlBlock: RawHtml } };
+const pt = { type: { htmlBlock: RawHtml, image: LinkedImage } };
 const share = shareTpl.replace(/{{TITLE_ENC}}/g, encodeURIComponent(title)).replace(/{{URL_ENC}}/g, encodeURIComponent(canonical));
 const bodyClass = `wp-singular post-template-default single single-post single-format-standard wp-embed-responsive wp-theme-generatepress post-image-above-header post-image-aligned-center slideout-enabled slideout-mobile sticky-menu-slide right-sidebar nav-float-right one-container header-aligned-left dropdown-hover featured-image-active`;
 ---
@@ -81,6 +82,6 @@ const bodyClass = `wp-singular post-template-default single single-post single-f
 			<Fragment set:html={membership} />
 		</div>
 	</article>
-	<Fragment slot="sidebar" set:html={sidebar} />
+	<Sidebar slot="sidebar" />
 	<Fragment slot="after"><RelatedBand entries={related.slice(3, 7)} mostRead={top} category={category} /></Fragment>
 </SE>

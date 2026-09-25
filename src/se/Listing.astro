@@ -1,6 +1,7 @@
 ---
 /** Archive pages (home, category, tag, author) from EmDash queries: 15 cards + 14 list items on the homepage,
  *  16 cards on term/author archives, offset pagination with Prev/Next like the live GenerateBlocks loop. */
+import Sidebar from "../components/Sidebar.astro";
 import SE from "../layouts/SE.astro";
 import Card from "../components/Card.astro";
 import MoreList from "../components/MoreList.astro";
@@ -9,8 +10,6 @@ import AuthorBox from "../components/AuthorBox.astro";
 import MostRead from "../components/MostRead.astro";
 import { mostRead } from "./queries";
 import { SITE, SITE_TITLE, SITE_DESCRIPTION, type Entry, type Term, type Byline } from "./site";
-import sidebar from "./partials/sidebar.html?raw";
-import sidebarHome from "./partials/sidebar-home.html?raw";
 import seBooks from "./partials/home-se-books.html?raw";
 export type ListingKind = "home" | "category" | "tag" | "author";
 interface Props { kind: ListingKind; slug?: string | null; page: number; term?: Term | null; byline?: Byline | null; entries: Entry[]; hasNext: boolean }
@@ -39,6 +38,6 @@ const top = kind === "home" && page === 1 ? await mostRead(10) : [];
 	</div>
 	{more.length > 0 && <MoreList entries={more} />}
 	<ArchiveNav prev={prev} next={next} />
-	<Fragment slot="sidebar" set:html={kind === "home" ? sidebarHome : sidebar} />
+	<Sidebar slot="sidebar" home={kind === "home" && page === 1} />
 	{kind === "home" && page === 1 && <Fragment slot="after"><MostRead entries={top} /><Fragment set:html={seBooks} /></Fragment>}
 </SE>

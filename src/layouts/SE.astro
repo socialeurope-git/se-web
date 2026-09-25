@@ -12,7 +12,6 @@ import slideoutTpl from "../se/partials/slideout.html?raw";
 import slideoutOverlay from "../se/partials/slideout-overlay.html?raw";
 import nsHighlight from "../se/partials/ns-highlight.html?raw";
 import gpScripts from "../se/partials/gp-inline-scripts.html?raw";
-import awrm from "../se/partials/awrm-rotation.html?raw";
 import plausible from "../se/partials/head-plausible.html?raw";
 
 interface Props {
@@ -70,7 +69,6 @@ const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "cu
 {share && <Fragment set:html={share} />}
 <Fragment set:html={gpScripts} />
 <script is:inline src="/se/offside.min.js"></script>
-<Fragment set:html={awrm} />
 <script is:inline src="/se/menu.min.js"></script>
 <script is:inline src="/se/accordion.js"></script>
 {mergedHeader && <Fragment set:html={nsHighlight} />}

@@ -2,12 +2,12 @@
 /** Search results at /?s=<query> (snippet 35 markup) on EmDash full-text search. */
 import { search, getEmDashEntry, getBylineBySlug } from "emdash";
 import { Image } from "emdash/ui";
+import Sidebar from "../components/Sidebar.astro";
 import SE from "../layouts/SE.astro";
 import AuthorLinks from "../components/AuthorLinks.astro";
 import Avatar from "../components/Avatar.astro";
 import { SITE, SITE_TITLE, postUrl, authorUrl, categoryUrl, credits, type Entry, type Byline } from "./site";
 import { ordinalDate } from "./format";
-import sidebar from "./partials/sidebar.html?raw";
 interface Props { q: string; page: number }
 const { q, page } = Astro.props;
 const PER = 16;
@@ -42,5 +42,5 @@ const pageHref = (n: number) => `${SITE}/${n <= 1 ? "" : `page/${n}`}?s=${encode
 </div>
 </article>); })}
 	{pages > 1 && <nav class="se-sr-pagination" aria-label="Search results pages"><span class="se-sr-pagination__count">Page {page} of {pages}</span><span class="se-sr-pagination__links">{page > 1 && <a href={pageHref(page - 1)}><span aria-hidden="true">&larr;</span> Newer Articles</a>}{page < pages && <a href={pageHref(page + 1)}>Older Articles <span aria-hidden="true">&rarr;</span></a>}</span></nav>}
-	<Fragment slot="sidebar" set:html={sidebar} />
+	<Sidebar slot="sidebar" />
 </SE>

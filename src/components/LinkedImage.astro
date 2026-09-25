@@ -1,0 +1,8 @@
+---
+/** Portable Text `image` renderer: EmDash's own image block, wrapped in the block's link when it has one
+ *  (advertisements and linked figures). EmDash's default renderer ignores `link` — emdash-cms/emdash#2497. */
+import { PTImage } from "emdash/ui";
+interface Props { node: { _type: "image"; _key: string; link?: string; [k: string]: unknown } }
+const { node } = Astro.props;
+---
+{node.link ? <a href={node.link} target="_blank" rel="noreferrer noopener"><PTImage node={node as never} /></a> : <PTImage node={node as never} />}

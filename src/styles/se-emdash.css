@@ -10,3 +10,15 @@
 .entry-content blockquote { box-sizing: border-box; overflow-wrap: break-word; }
 .entry-content .emdash-html-block { margin: 0; }
 .entry-content .emdash-html-block > :first-child { margin-top: 0; }
+
+/* Sidebar advertisements from the EmDash widget area (Portable Text instead of the GenerateBlocks group markup);
+   box model copied from the live widgets: figure, 11px spacer, centred 17px lead, 16px text, WordPress fill button */
+.se-ad .wp-block-group__inner-container .emdash-image { margin: 0 0 11px; }   /* figure + the 11px spacer of the live widgets */
+.se-ad .wp-block-group__inner-container > a { display: block; }
+.se-ad .emdash-image img { width: 100%; height: auto; display: block; }
+.se-ad p { font-size: 16px; line-height: 1.7; margin: 0 0 1.5em; }
+.se-ad p.has-text-align-center { font-size: 17px; }
+.se-ad .emdash-buttons + p { margin: 10px 0 0; font-size: 13px; line-height: 1.5; }
+.se-ad .emdash-buttons { justify-content: center; margin: 0; gap: 0; }
+.se-ad .emdash-buttons .emdash-button { display: block; border: 0; background: #d0253c; color: #fff; border-radius: 5px; font-size: 13px; font-weight: 500; line-height: 1.7; padding: 10px calc(1.333em + 2px); text-decoration: none; text-align: center; }
+.se-ad .emdash-buttons .emdash-button:hover { color: #fff; }

@@ -1,0 +1,33 @@
+---
+/** Right sidebar: the advertisement widgets from the EmDash widget area "sidebar" (rotated client-side like the
+ *  Ad Widgets Rotation Manager did) and, on the homepage, the newsletter box in front of them.
+ *  An advertisement = title + image + text + button (Portable Text); the image links to the button's target, as the
+ *  live widgets did (Portable Text image blocks cannot carry a link yet, emdash-cms/emdash#2497). */
+import { getWidgetArea } from "emdash";
+import { PortableText, PTImage } from "emdash/ui";
+import newsletter from "../se/partials/sidebar-newsletter.html?raw";
+import rotation from "../se/partials/awrm-rotation.html?raw";
+interface Props { home?: boolean }
+const { home = false } = Astro.props;
+const area = await getWidgetArea("sidebar");
+type Block = { _type: string; buttons?: { url?: string }[]; [k: string]: unknown };
+const widgets = ((area?.widgets ?? []) as { id: string; type: string; title?: string | null; content?: Block[] }[]).map((w) => {
+	const content = w.content ?? [];
+	const image = content.find((b) => b._type === "image");
+	const href = content.find((b) => b._type === "buttons")?.buttons?.[0]?.url;
+	return { ...w, image, href, rest: content.filter((b) => b !== image) };
+});
+---
+<div class="widget-area sidebar is-right-sidebar" id="right-sidebar">
+	<div class="inside-right-sidebar">
+		{home && <Fragment set:html={newsletter} />}
+		{widgets.map((w) => <aside class="widget inner-padding widget_block se-ad" data-widget={w.id}>
+<div class="wp-block-group"><div class="wp-block-group__inner-container is-layout-constrained wp-block-group-is-layout-constrained">
+{w.title && <h3 class="wp-block-heading has-text-align-center">{w.title}</h3>}
+{w.image && (w.href ? <a href={w.href} target="_blank" rel="noreferrer noopener"><PTImage node={w.image as never} /></a> : <PTImage node={w.image as never} />)}
+{w.type === "content" && <PortableText value={w.rest as never} />}
+</div></div>
+</aside>)}
+	</div>
+</div>
+<Fragment set:html={rotation} />

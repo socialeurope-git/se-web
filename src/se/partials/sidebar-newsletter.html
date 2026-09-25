@@ -1,0 +1,35 @@
+<aside id="se-nl" class="se-nl" aria-labelledby="se-nl-title">
+<h2 id="se-nl-title" class="se-nl__title">Progressive Thinking on the Big Issues of Our Time</h2>
+<p class="se-nl__sub">Read by policymakers, academics and journalists in 100+ countries.</p>
+<form class="se-nl__form" action="https://static.mailerlite.com/webforms/submit/d4m6j9" method="post" novalidate data-se-nl>
+<input class="se-nl__email" type="email" name="fields[email]" placeholder="enter your email address here" aria-label="Email address" autocomplete="email" required>
+<input type="hidden" name="ml-submit" value="1">
+<label class="se-nl__consent"><input type="checkbox" required aria-label="Consent to receive the newsletter"><span>I agree to the <a href="https://www.socialeurope.eu/privacy-policy">Privacy Policy</a> and consent to receive the Social Europe newsletter.</span></label>
+<button class="se-nl__btn" type="submit">Subscribe Free</button>
+<p class="se-nl__msg" role="alert" hidden></p>
+</form>
+</aside>
+<script>
+(function(){
+var f=document.querySelector('#se-nl form[data-se-nl]');if(!f){return;}
+var em=f.querySelector('input[type=email]'),ck=f.querySelector('input[type=checkbox]'),bt=f.querySelector('button'),msg=f.querySelector('.se-nl__msg');
+function hide(){msg.hidden=true;}
+em.addEventListener('input',hide);ck.addEventListener('change',hide);
+function fail(t){msg.innerHTML=t;msg.hidden=false;delete f.dataset.busy;bt.disabled=false;}
+f.addEventListener('submit',function(e){
+e.preventDefault();if(f.dataset.busy){return;}
+if(em.value.trim()===''||!em.validity.valid){fail('Please enter a valid email address.');em.focus();return;}
+if(!ck.checked){fail('Please tick the box to consent to receiving the newsletter.');ck.focus();return;}
+f.dataset.busy='1';bt.disabled=true;msg.hidden=true;
+var b=new URLSearchParams();b.set('fields[email]',em.value.trim());b.set('ml-submit','1');b.set('ajax','1');b.set('guid',Math.random().toString(36).slice(2));
+fetch(f.action,{method:'POST',body:b,mode:'cors',credentials:'omit'}).then(function(r){return r.json();}).then(function(d){
+if(d&&d.success){var p=document.createElement('p');p.className='se-nl__done';p.textContent='Thank you — check your inbox to confirm.';f.replaceWith(p);if(window.plausible){plausible('Newsletter Signup',{props:{placement:'sidebar'}});}return;}
+var x=d&&d.errors?(d.errors.fatal||(d.errors.fields&&d.errors.fields.email)):null;if(Array.isArray(x)){x=x[0];}
+fail(x?String(x).replace(/</g,'&lt;'):'Something went wrong. Please try again.');
+}).catch(function(){fail('We could not reach MailerLite. Please try again or <a href="https://newsletter.socialeurope.eu/">subscribe here</a>.');});
+});
+var box=document.getElementById('se-nl'),lead=document.querySelector('#main article.featured-column');
+if(window.matchMedia&&window.matchMedia('(max-width: 768px)').matches){if(box&&lead){lead.insertAdjacentElement('afterend',box);}}
+else{var img=lead&&lead.querySelector('img');function fit(){if(!img||!box.parentElement.classList.contains('inside-right-sidebar')){return;}var h=img.getBoundingClientRect().height;box.style.minHeight=h>0?Math.round(h)+'px':'';}fit();window.addEventListener('resize',fit);if(img&&!img.complete){img.addEventListener('load',fit);}}
+})();
+</script>

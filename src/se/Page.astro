@@ -2,10 +2,11 @@
 /** Static pages: default template (entry header + content) or the "SE Editorial" template (intro section, content, optional CTA). */
 import { getSeoMeta } from "emdash";
 import { PortableText } from "emdash/ui";
+import Sidebar from "../components/Sidebar.astro";
 import SE from "../layouts/SE.astro";
 import RawHtml from "../components/RawHtml.astro";
+import LinkedImage from "../components/LinkedImage.astro";
 import { SITE, SITE_TITLE, postUrl, absolute, type Entry } from "./site";
-import sidebar from "./partials/sidebar.html?raw";
 import cta from "./partials/se-ed-cta.html?raw";
 interface Props { page: Entry }
 const { page } = Astro.props;
@@ -14,7 +15,7 @@ const editorial = d.template === "se-editorial";
 const hasSidebar = !!d.sidebar;
 const canonical = postUrl(slug);
 const seo = getSeoMeta(page as never, { siteTitle: SITE_TITLE, siteUrl: SITE, path: `/${slug}`, titleSeparator: " - ", defaultOgImage: absolute(d.featured_image?.src) ?? undefined });
-const pt = { type: { htmlBlock: RawHtml } };
+const pt = { type: { htmlBlock: RawHtml, image: LinkedImage } };
 const bodyClass = `wp-singular ${editorial ? "page-template page-template-se-editorial" : "page-template-default"} page wp-embed-responsive wp-theme-generatepress ${editorial ? "post-image-below-header post-image-aligned-center" : "post-image-above-header post-image-aligned-left"} slideout-enabled slideout-mobile sticky-menu-slide ${editorial ? "se-editorial " : ""}${hasSidebar ? "right-sidebar" : "no-sidebar"} nav-float-right one-container header-aligned-left dropdown-hover`;
 ---
 <SE title={seo.title} description={seo.description} canonical={canonical} image={seo.ogImage} robots={seo.robots} content={{ collection: "pages", id: d.id, slug }} stylesheet={hasSidebar ? "site" : "nosidebar"} bodyClass={bodyClass}>
@@ -23,5 +24,5 @@ const bodyClass = `wp-singular ${editorial ? "page-template page-template-se-edi
 			<article id={`post-${d.id}`} class="page type-page status-publish"><div class="inside-article"><div class="entry-content"><PortableText value={d.content as never} components={pt} /></div></div></article>
 			{d.show_cta && <Fragment set:html={cta} />}</>
 		: <article id={`post-${d.id}`} class="page type-page status-publish"><div class="inside-article"><header class="entry-header"><h1 class="entry-title" {...page.edit?.title}>{title}</h1></header><div class="entry-content"><PortableText value={d.content as never} components={pt} /></div></div></article>}
-	{hasSidebar && <Fragment slot="sidebar" set:html={sidebar} />}
+	{hasSidebar && <Sidebar slot="sidebar" />}
 </SE>
