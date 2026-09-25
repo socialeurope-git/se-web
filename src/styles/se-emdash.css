@@ -15,7 +15,7 @@
    box model copied from the live widgets: figure, 11px spacer, centred 17px lead, 16px text, WordPress fill button */
 .se-ad .wp-block-group__inner-container .emdash-image { margin: 0 0 11px; }   /* figure + the 11px spacer of the live widgets */
 .se-ad .wp-block-group__inner-container > a { display: block; }
-.se-ad .emdash-image img { width: auto; max-width: 100%; height: auto; display: block; }   /* natural width like WordPress (max-width 100%), never stretched */
+.se-ad .emdash-image img { width: revert-layer; max-width: 100%; height: auto; display: block; }   /* like WordPress: the width attribute (reserves the box before a lazy load), capped at 100 %, never stretched; revert-layer undoes Astro's layered `width:100%` for responsive images */
 .se-ad p { font-size: 16px; line-height: 1.7; margin: 0 0 1.5em; }
 .se-ad p.has-text-align-center { font-size: 17px; }
 .se-ad .emdash-buttons + p { margin: 10px 0 0; font-size: 13px; line-height: 1.5; }
