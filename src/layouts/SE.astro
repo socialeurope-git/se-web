@@ -1,0 +1,52 @@
+---
+/** Social Europe page skeleton: GeneratePress markup frozen from the live site (spike 1), one static stylesheet. */
+import { EmDashHead, EmDashBodyStart, EmDashBodyEnd } from "emdash/ui";
+import { createPublicPageContext } from "emdash/page";
+import headerWrap from "../se/partials/header-wrap.html?raw";
+import footer from "../se/partials/footer.html?raw";
+import slideout from "../se/partials/slideout.html?raw";
+import slideoutOverlay from "../se/partials/slideout-overlay.html?raw";
+import nsHighlight from "../se/partials/ns-highlight.html?raw";
+
+interface Props { share?: string; title: string; description?: string | null; canonical: string; bodyClass: string; image?: string | null; type?: "website" | "article"; content?: { collection: string; id: string; slug?: string | null }; }
+const { title, description, canonical, bodyClass, image, type = "website", content, share } = Astro.props;
+const pageCtx = createPublicPageContext({ Astro, kind: content ? "content" : "custom", pageType: type, title, pageTitle: title, description, canonical, image, content, seo: { ogImage: image }, siteName: "Social Europe" });
+---
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title}</title>
+{description && <meta name="description" content={description} />}
+<link rel="canonical" href={canonical} />
+<link rel="stylesheet" href="/se/frozen.css" />
+<link rel="icon" href="https://www.socialeurope.eu/wp-content/uploads/2025/10/cropped-SE-scaled-1-150x150.png" sizes="32x32" />
+<EmDashHead page={pageCtx} />
+</head>
+<body class={bodyClass}>
+<EmDashBodyStart page={pageCtx} />
+<Fragment set:html={headerWrap} />
+<slot name="hero" />
+<div id="page" class="site grid-container container hfeed">
+	<div id="content" class="site-content">
+		<div id="primary" class="content-area">
+			<main class="site-main" id="main">
+				<slot />
+			</main>
+		</div>
+		<slot name="sidebar" />
+	</div>
+</div>
+<slot name="after" />
+<Fragment set:html={footer} />
+<Fragment set:html={slideout} />
+<Fragment set:html={slideoutOverlay} />
+{share && <Fragment set:html={share} />}
+<script is:inline src="/se/offside.min.js"></script>
+<script is:inline src="/se/menu.min.js"></script>
+<script is:inline src="/se/accordion.js"></script>
+<Fragment set:html={nsHighlight} />
+<EmDashBodyEnd page={pageCtx} />
+</body>
+</html>

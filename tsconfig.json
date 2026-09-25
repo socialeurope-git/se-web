@@ -1,7 +1,14 @@
 {
 	"extends": "astro/tsconfigs/base",
 	"compilerOptions": {
-		"types": ["node"]
+		"types": [
+			"node"
+		],
+		"resolveJsonModule": true
 	},
-	"include": ["src", ".astro/types.d.ts", "emdash-env.d.ts"]
+	"include": [
+		"src",
+		".astro/types.d.ts",
+		"emdash-env.d.ts"
+	]
 }

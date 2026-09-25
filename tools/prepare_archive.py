@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Build import + fixture files from the fetched archive.
+Inputs : archive/{posts,pages,users,media,terms,coauthors}.json and rendered pages (archive/live/<id>.html.gz, or a dir of <id>.html)
+Outputs: archive/wxr-<name>.xml (WXR with block-comment wrapping so the converter keeps figures/accordions verbatim),
+         src/se/data/authors.json (slug -> name, bio, url, avatarHtml), archive/fixtures/<id>.json (per-post live widgets)
+Usage  : prepare_archive.py <archive_dir> <live_dir> <name> [ids.json]"""
+import json, os, re, sys, gzip, html
+from xml.sax.saxutils import escape
+A=sys.argv[1]; LIVE=sys.argv[2]; NAME=sys.argv[3]; only=set(json.load(open(sys.argv[4]))) if len(sys.argv)>4 else None
+ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+posts=json.load(open(f'{A}/posts.json')); pages=json.load(open(f'{A}/pages.json')); users={u['slug']:u for u in json.load(open(f'{A}/users.json'))}
+media={m['id']:m for m in json.load(open(f'{A}/media.json'))} if os.path.exists(f'{A}/media.json') else {}
+terms=json.load(open(f'{A}/terms.json')); cats={c['id']:c for c in terms['categories']}; tags={t['id']:t for t in terms['tags']}
+coauthors=json.load(open(f'{A}/coauthors.json')) if os.path.exists(f'{A}/coauthors.json') else {}
+os.makedirs(f'{A}/fixtures',exist_ok=True); os.makedirs(f'{ROOT}/src/se/data',exist_ok=True)
+def live_html(pid):
+    for p in (f'{LIVE}/{pid}.html.gz', f'{LIVE}/{pid}.html'):
+        if os.path.exists(p): return (gzip.open(p,'rt',encoding='utf-8',errors='replace').read() if p.endswith('.gz') else open(p,encoding='utf-8',errors='replace').read())
+    return None
+def balanced(s,start_re,tags=('div','aside','section','form','figure','table','blockquote','ul','ol','nav','main','article','header','footer','picture')):
+    m=re.search(start_re,s)
+    if not m: return None,-1,-1
+    i=m.start(); depth=0
+    for t in re.finditer(r'<(/?)(%s)\b[^>]*?(/?)>'%'|'.join(tags),s[i:]):
+        if t.group(3)=='/': continue
+        depth+= -1 if t.group(1) else 1
+        if depth==0: return s[i:i+t.end()],i,i+t.end()
+    return None,-1,-1
+def clean_body(entry):
+    b=entry
+    for marker in ('<div class="ns-content-marker"','<div class="se-author-profile-box'):
+        k=b.find(marker)
+        if k>=0: b=b[:k]
+    b=re.sub(r'<style[^>]*>.*?</style>','',b,flags=re.S)
+    for rx in (r'<aside class="se-rel-inline', r'<div id="mlb2-\d+'):
+        while True:
+            seg,i,j=balanced(b,rx)
+            if seg is None: break
+            b=b[:i]+b[j:]
+    return b.strip()
+VOID={'br','img','hr','source','input','meta','link','wbr','track','embed'}
+def top_level(fragment):
+    out=[];depth=0;buf=''
+    for m in re.finditer(r'<!--.*?-->|<(/?)([a-zA-Z0-9]+)[^>]*?(/?)>|[^<]+',fragment,re.S):
+        tok=m.group(0)
+        if tok.startswith('<!--'): continue
+        if tok.startswith('<'):
+            closing,tag,selfc=m.group(1)=='/',m.group(2).lower(),m.group(3)=='/'
+            buf+=tok
+            if closing: depth-=1
+            elif not(tag in VOID or selfc): depth+=1
+            if depth<=0:
+                depth=0
+                if buf.strip(): out.append(buf.strip())
+                buf=''
+        else:
+            buf+=tok
+            if depth<=0 and buf.strip(): out.append(buf.strip()); buf=''
+    if buf.strip(): out.append(buf.strip())
+    return out
+def wrap_blocks(body):
+    """Wrap top-level elements in Gutenberg comments: p/h/ul/ol/blockquote become editable blocks, everything else stays raw HTML."""
+    out=[]
+    for el in top_level(body):
+        m=re.match(r'<([a-zA-Z0-9]+)',el); tag=m.group(1).lower() if m else ''
+        if tag=='p' and not re.search(r'<(img|figure|iframe|table)',el): out.append(f'<!-- wp:paragraph -->\n{el}\n<!-- /wp:paragraph -->')
+        elif tag in('h1','h2','h3','h4','h5','h6'): out.append(f'<!-- wp:heading -->\n{el}\n<!-- /wp:heading -->')
+        elif tag in('ul','ol') and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el: out.append(f'<!-- wp:list -->\n{el}\n<!-- /wp:list -->')
+        elif tag=='blockquote' and '<img' not in el: out.append(f'<!-- wp:quote -->\n{el}\n<!-- /wp:quote -->')
+        else: out.append(f'<!-- wp:html -->\n{el}\n<!-- /wp:html -->')
+    return '\n\n'.join(out)
+def cdata(s): return '<![CDATA['+s.replace(']]>',']]]]><![CDATA[>')+']]>'
+authors={}
+def author_from_hero(h):
+    """capture exact avatar markup + name per author slug from the hero byline"""
+    res=[]
+    for m in re.finditer(r'<a class="se-hero__author" href="https://www\.socialeurope\.eu/author/([^"/]+)/?" rel="author">(<span class="se-avatar[^"]*">.*?</span>)?<span class="se-hero__name">([^<]*)</span></a>',h,re.S):
+        slug,av,name=m.group(1),m.group(2) or '',html.unescape(m.group(3)).strip()
+        # avatar span may be '<span class="se-avatar"><picture>...</picture></span>' or initials span
+        if av and 'picture' in av:
+            seg,_,_=balanced(av,r'<span class="se-avatar"',tags=('span','picture'))
+            av=seg or av
+        res.append((slug,name,av))
+        a=authors.setdefault(slug,{'slug':slug,'name':name,'avatarHtml':'','bio':'','url':f'https://www.socialeurope.eu/author/{slug}'})
+        if av and not a['avatarHtml']: a['avatarHtml']=av
+        u=users.get(slug)
+        if u and not a['bio']: a['bio']=u.get('description','') ; a['name']=u.get('name') or name
+    return res
+items=[]; fixtures_written=0; missing_live=0; att_seen=set()
+sel=[p for p in posts if (only is None or p['id'] in only)]
+for p in sel:
+    pid=p['id']; h=live_html(pid)
+    if not h: missing_live+=1; continue
+    ec_seg=h.split('<div class="entry-content"',1)
+    if len(ec_seg)<2: missing_live+=1; continue
+    entry='<div class="entry-content"'+ec_seg[1].split('</article>')[0]
+    inner=entry[entry.find('>')+1:]                      # drop the .entry-content wrapper itself
+    body=clean_body(inner); content=wrap_blocks(body)
+    bylines=author_from_hero(h)
+    if not bylines and coauthors.get(str(pid)):
+        bylines=[(a['slug'],a['name'],'') for a in coauthors[str(pid)]]
+    creator=bylines[0][0] if bylines else 'social-europe'
+    title=html.unescape(re.sub('<[^>]+>','',p['title']['rendered']))
+    # standfirst: only what the live hero shows (posts without a manual excerpt have no dek element at all)
+    hero_seg=h.split('class="entry-content"')[0]
+    dm=re.search(r'<p class="[^"]*se-hero__dek[^"]*">(.*?)</p>',hero_seg,re.S); dek=html.unescape(re.sub('<[^>]+>','',dm.group(1))).strip() if dm else ''
+    t=''.join(f'<category domain="category" nicename="{cats[c]["slug"]}">{cdata(cats[c]["name"])}</category>' for c in p['categories'] if c in cats)
+    t+=''.join(f'<category domain="post_tag" nicename="{tags[x]["slug"]}">{cdata(tags[x]["name"])}</category>' for x in p['tags'] if x in tags)
+    meta=''
+    fm=p.get('featured_media'); fmedia=media.get(fm)
+    if fmedia and fm not in att_seen:
+        att_seen.add(fm); url=fmedia['source_url']
+        items.append(f'<item><title>{escape(os.path.basename(url))}</title><link>{escape(url)}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">{escape(url)}</guid><content:encoded>{cdata("")}</content:encoded><excerpt:encoded>{cdata("")}</excerpt:encoded><wp:post_id>{fm}</wp:post_id><wp:post_date>{p["date"].replace("T"," ")}</wp:post_date><wp:post_date_gmt>{p["date_gmt"].replace("T"," ")}</wp:post_date_gmt><wp:post_name>{escape(os.path.splitext(os.path.basename(url))[0])}</wp:post_name><wp:status>inherit</wp:status><wp:post_parent>{pid}</wp:post_parent><wp:post_type>attachment</wp:post_type><wp:attachment_url>{escape(url)}</wp:attachment_url><wp:postmeta><wp:meta_key>_wp_attachment_image_alt</wp:meta_key><wp:meta_value>{cdata(fmedia.get("alt_text") or "")}</wp:meta_value></wp:postmeta></item>')
+    if fmedia: meta=f'<wp:postmeta><wp:meta_key>_thumbnail_id</wp:meta_key><wp:meta_value>{fm}</wp:meta_value></wp:postmeta>'
+    items.append(f'''<item><title>{cdata(title)}</title><link>{escape(p['link'])}</link><dc:creator>{cdata(creator)}</dc:creator><guid isPermaLink="false">https://www.socialeurope.eu/?p={pid}</guid>
+<content:encoded>{cdata(content)}</content:encoded><excerpt:encoded>{cdata(dek)}</excerpt:encoded><wp:post_id>{pid}</wp:post_id><wp:post_date>{p['date'].replace('T',' ')}</wp:post_date><wp:post_date_gmt>{p['date_gmt'].replace('T',' ')}</wp:post_date_gmt><wp:post_modified>{p['modified'].replace('T',' ')}</wp:post_modified><wp:comment_status>closed</wp:comment_status><wp:post_name>{escape(p['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>0</wp:post_parent><wp:post_type>post</wp:post_type>{t}{meta}</item>''')
+    # per-post fixtures from the live page (widgets whose data will later come from services)
+    rel_inline,_,_=balanced(entry,r'<aside class="se-rel-inline'); rel_band,_,_=balanced(h,r'<section class="se-rel-band"')
+    hero_bg=re.search(r'--inline-bg-image: url\(\'([^\']+)\'\)',h)
+    head_title=re.search(r'<title>(.*?)</title>',h,re.S)
+    fx={'id':pid,'slug':p['slug'],'bylines':[{'slug':s,'name':n} for s,n,_ in bylines],'heroBg':hero_bg.group(1) if hero_bg else None,'relInline':rel_inline,'relBand':rel_band,'title':html.unescape(head_title.group(1).strip()) if head_title else title,'dek':dek,'bodyClass':re.search(r'<body class="([^"]*)"',h).group(1),'articleClass':(re.search(r'<article id="post-\d+" class="([^"]*)"',h) or [None,''])[1]}
+    json.dump(fx,open(f'{A}/fixtures/{pid}.json','w')); fixtures_written+=1
+# pages (editorial etc.) as plain items
+for pg in pages:
+    if only is not None and pg['id'] not in only: continue
+    body=pg['content']['rendered']; title=html.unescape(re.sub('<[^>]+>','',pg['title']['rendered']))
+    items.append(f'''<item><title>{cdata(title)}</title><link>{escape(pg['link'])}</link><dc:creator>social-europe</dc:creator><guid isPermaLink="false">https://www.socialeurope.eu/?page_id={pg['id']}</guid><content:encoded>{cdata(wrap_blocks(body))}</content:encoded><excerpt:encoded>{cdata(html.unescape(re.sub('<[^>]+>','',pg['excerpt']['rendered'])).strip())}</excerpt:encoded><wp:post_id>{pg['id']}</wp:post_id><wp:post_date>{pg['date'].replace('T',' ')}</wp:post_date><wp:post_date_gmt>{pg['date'].replace('T',' ')}</wp:post_date_gmt><wp:post_name>{escape(pg['slug'])}</wp:post_name><wp:status>publish</wp:status><wp:post_parent>{pg.get('parent',0)}</wp:post_parent><wp:post_type>page</wp:post_type></item>''')
+authors_xml=''.join(f'<wp:author><wp:author_id>{i+1}</wp:author_id><wp:author_login>{cdata(a["slug"])}</wp:author_login><wp:author_email>{cdata(a["slug"]+"@example.invalid")}</wp:author_email><wp:author_display_name>{cdata(a["name"])}</wp:author_display_name></wp:author>' for i,a in enumerate(authors.values()))
+authors_xml+='<wp:author><wp:author_id>9999</wp:author_id><wp:author_login>social-europe</wp:author_login><wp:author_email>editor@example.invalid</wp:author_email><wp:author_display_name>Social Europe</wp:author_display_name></wp:author>'
+cx=''.join(f'<wp:category><wp:term_id>{c["id"]}</wp:term_id><wp:category_nicename>{c["slug"]}</wp:category_nicename><wp:category_parent></wp:category_parent><wp:cat_name>{cdata(c["name"])}</wp:cat_name></wp:category>' for c in cats.values())
+tx=''.join(f'<wp:tag><wp:term_id>{t["id"]}</wp:term_id><wp:tag_slug>{t["slug"]}</wp:tag_slug><wp:tag_name>{cdata(t["name"])}</wp:tag_name></wp:tag>' for t in tags.values())
+xml=f'''<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:wfw="http://wellformedweb.org/CommentAPI/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:wp="http://wordpress.org/export/1.2/">
+<channel><title>Social Europe</title><link>https://www.socialeurope.eu</link><description>Politics, economy and employment &amp; labour</description><language>en-GB</language><wp:wxr_version>1.2</wp:wxr_version><wp:base_site_url>https://www.socialeurope.eu</wp:base_site_url><wp:base_blog_url>https://www.socialeurope.eu</wp:base_blog_url>
+{authors_xml}{cx}{tx}<generator>https://wordpress.org/?v=7.1</generator>
+{''.join(items)}
+</channel></rss>'''
+out=f'{A}/wxr-{NAME}.xml'; open(out,'w').write(xml)
+import xml.dom.minidom as md; md.parseString(xml.encode())
+# merge authors into the theme data file (keep existing avatar markup if already captured)
+ap=f'{ROOT}/src/se/data/authors.json'; existing=json.load(open(ap)) if os.path.exists(ap) else {}
+for s,a in authors.items():
+    e=existing.setdefault(s,a)
+    for k,v in a.items():
+        if v and not e.get(k): e[k]=v
+json.dump(existing,open(ap,'w'),indent=0,ensure_ascii=False)
+print(f'{out}: {len(sel)-missing_live} posts, {len(att_seen)} featured attachments, {sum(1 for pg in pages if only is None or pg["id"] in only)} pages, {len(authors)} authors (total in data file {len(existing)}), fixtures {fixtures_written}, missing live pages {missing_live}, {len(xml)//1024} KB')

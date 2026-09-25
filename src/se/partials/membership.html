@@ -1,0 +1,67 @@
+<div style="height:25px" aria-hidden="true" class="wp-block-spacer"></div>
+
+
+
+<style>
+  .se-membership { --se-primary:#d0253c; --se-bg:#faf6f4; --se-border:#f2d4d4; --se-text:#222; --se-muted:#6b6b6b; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji", "Segoe UI Symbol"; color: var(--se-text); background: var(--se-bg); border-radius:0; padding:28px; width:100%; max-width:none; margin:24px 0; overflow:hidden; }
+  /* Ensure full width inside common WP containers */
+  .wp-block-custom-html .se-membership, .wp-block-group .se-membership, .entry-content .se-membership { max-width:none !important; width:100% !important; display:block; }
+  .se-membership, .se-membership * { box-sizing: border-box; }
+  .se-membership h4 { margin:0 0 8px; font-size:32px; line-height:1.2; text-align:center; font-weight:800; }
+  .se-subtitle { text-align:center; font-size:18px; line-height:1.55; margin:0 auto 16px; max-width:900px; }
+  .se-plans { display:grid; grid-template-columns:1fr; gap:28px; margin-top:0; margin-bottom:12px; padding-bottom:0; }
+  @media (min-width: 880px){ .se-plans{ grid-template-columns:repeat(3,1fr);} }
+  .se-card { background:#fff; border:1px solid #eee4e4; border-radius:10px; padding:18px 18px 20px; display:flex; flex-direction:column; height:100%; text-align:center; }
+  .se-badge { color:#f6c343; font-size:30px; letter-spacing:5px; margin-bottom:8px; display:block; text-align:center; }
+  @media (min-width: 880px){ .se-badge { font-size:34px; } }
+  .se-title { font-weight:700; font-size:18px; margin:2px 0 8px; }
+  .se-title .se-title-dash { display:inline-block; padding-top:4px; }
+  .se-price { display:flex; align-items:baseline; gap:6px; margin:6px 0 4px; }
+  .se-price .amount { font-size:40px; font-weight:800; }
+  .se-price .unit { font-size:22px; font-weight:700; }
+  .se-price .per { font-size:16px; color:#555; }
+  .se-annual { font-size:14px; color:#444; font-weight:700; margin-bottom:10px; }
+  .se-desc { margin:0; font-size:15px; color:var(--se-muted); line-height:1.55; }
+  .se-cta-wrap { text-align:center; margin-top:0; padding-top:12px; }
+  .se-cta { display:inline-block; background:var(--se-primary); color:#fff; padding:12px 18px; border-radius:8px; text-decoration:none; font-weight:800; margin-left:auto; margin-right:auto; width:auto; max-width:420px; box-sizing:border-box; overflow-wrap:anywhere; transition:background-color .15s ease; font-size:16px; }
+  .se-cta:hover, .se-cta:focus, .se-cta:active { background:#191919; color:#fff; }
+  @media (max-width: 879px){
+    .se-plans { gap:28px; margin-bottom:12px; padding-bottom:0; }
+    .se-cta-wrap { margin-top:8px; padding-left:12px; padding-right:12px; padding-top:12px; }
+    .se-cta { width:auto; max-width:420px; }
+  }
+</style>
+<div class="se-membership" role="region" aria-labelledby="se-membership-title">
+  <h4 id="se-membership-title">Help Keep Social Europe Free for Everyone</h4>
+  <p class="se-subtitle">
+    We believe quality ideas should be accessible to all — no paywalls, no barriers. 
+    Your support keeps Social Europe free and independent, funding the thought leadership, opinion, and analysis that sparks real change.
+  </p>
+
+  <div class="se-plans">
+    <!-- Plan 1 -->
+    <div class="se-card">
+      <div class="se-badge" aria-hidden="true">★</div>
+      <div class="se-title">Social Europe Supporter <br><span class="se-title-dash">—</span> €4.75/month</div>
+      <p class="se-desc">Help sustain free, independent publishing for our global community.</p>
+    </div>
+
+    <!-- Plan 2 -->
+    <div class="se-card">
+      <div class="se-badge" aria-hidden="true">★ ★</div>
+      <div class="se-title">Social Europe Advocate <br><span class="se-title-dash">—</span> €9.50/month</div>
+      <p class="se-desc">Go further: fuel more ideas and more reach.</p>
+    </div>
+
+    <!-- Plan 3 -->
+    <div class="se-card">
+      <div class="se-badge" aria-hidden="true">★ ★ ★</div>
+      <div class="se-title">Social Europe Champion <br><span class="se-title-dash">—</span> €19/month</div>
+      <p class="se-desc">Make the biggest impact — help us grow, innovate, and amplify change.</p>
+    </div>
+  </div>
+
+  <div class="se-cta-wrap">
+    <a class="se-cta" href="https://steady.page/en/socialeurope/about" target="_blank" rel="noopener">Become a Member — Keep Social Europe Free</a>
+  </div>
+</div>

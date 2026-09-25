@@ -4,3 +4,4 @@ dist/
 data.db*
 uploads/
 .astro/
+archive/
