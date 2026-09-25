@@ -11,15 +11,15 @@
 				<xsl:variable name="tableMinWidth" select="'727'"/><xsl:variable name="colorMain" select="'#191919'"/><xsl:variable name="colorAccent" select="'#d0253c'"/><xsl:variable name="relativeFontColor" select="'#ffffff'"/><title>XML Sitemap - Social Europe</title>
 <style style="text/css">
 html{font-size:62.5%;height:100%;}body{font-size:1.4rem;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;min-height:100%;display:grid;grid-template-rows:auto 1fr auto;margin:0;}.wrap{max-width:<xsl:value-of select="concat($tableMinWidth,'px')" />;margin:0 auto;overflow-wrap:break-word;}a{color:#05809e;text-decoration:none;}h1{font-size:2.4rem;font-family:Verdana,Geneva,sans-serif;font-weight:normal;margin:0;color:<xsl:value-of select="$colorAccent" />;}h1 img{vertical-align:bottom;margin-inline-end:1.4rem;image-rendering:-webkit-optimize-contrast;}#description{background-color:<xsl:value-of select="$colorMain" />;border-bottom:.7rem solid <xsl:value-of select="$colorAccent" />;color:<xsl:value-of select="$relativeFontColor" />;padding:2rem 2rem 1.3rem;}#description a{color:<xsl:value-of select="$relativeFontColor" />;}#content{padding:2rem;background:#fff;}a:hover{border-bottom:1px solid;}table{border-spacing:0;table-layout:fixed;}th,td{font-size:1.2rem;border:0px solid;padding:1rem 1.5rem;width:100%;max-width:<xsl:value-of select="concat($tableMinWidth - 173,'px')" />;min-width:113px;overflow-wrap:anywhere;}th{text-align:start;border-bottom:1px solid <xsl:value-of select="$colorAccent" />;}tr:nth-of-type(2n){background-color:#eaeaea;}#footer{padding:0 3rem 2rem;font-size:1.1rem;color:#999;}#footer a{color:inherit;}#description a,#footer a{border-bottom:1px solid;}#description a:hover,#footer a:hover{border-bottom:none;}</style>
-<link rel="icon" href="https://www.socialeurope.eu/wp-content/uploads/2025/10/cropped-SE-scaled-1-150x150.png" sizes="32x32" />
-<link rel="icon" href="https://www.socialeurope.eu/wp-content/uploads/2025/10/cropped-SE-scaled-1-350x350.png" sizes="192x192" />
-<link rel="apple-touch-icon" href="https://www.socialeurope.eu/wp-content/uploads/2025/10/cropped-SE-scaled-1-350x350.png" />
-<meta name="msapplication-TileImage" content="https://www.socialeurope.eu/wp-content/uploads/2025/10/cropped-SE-scaled-1-350x350.png" />
+<link rel="icon" href="/se/img/cropped-SE-scaled-1-150x150.png" sizes="32x32" />
+<link rel="icon" href="/se/img/cropped-SE-scaled-1-350x350.png" sizes="192x192" />
+<link rel="apple-touch-icon" href="/se/img/cropped-SE-scaled-1-350x350.png" />
+<meta name="msapplication-TileImage" content="/se/img/cropped-SE-scaled-1-350x350.png" />
 			</head>
 			<body class="ltr">
 				<div id="description">
 					<div class="wrap">
-						<a href="https://www.socialeurope.eu"><h1><img src="https://www.socialeurope.eu/wp-content/uploads/2025/08/SE-logo-150x150.png" width="29" height="29" />Social Europe — XML Sitemap</h1></a>
+						<a href="https://www.socialeurope.eu"><h1><img src="/se/img/SE-logo-150x150.png" width="29" height="29" />Social Europe — XML Sitemap</h1></a>
 <p>
 	This is an optimised XML sitemap meant to be processed quickly by search engines like <a href="https://www.google.com/" target="_blank" rel="nofollow noreferrer noopener">Google</a> or <a href="https://www.bing.com/" target="_blank" rel="nofollow noreferrer noopener">Bing</a>.</p>
 <p>

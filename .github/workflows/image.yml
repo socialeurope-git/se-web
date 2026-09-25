@@ -1,4 +1,5 @@
-# Build the Social Europe EmDash image and push it to GHCR; Bunny Magic Containers pulls ghcr.io/<owner>/se-web:latest.
+# Build the Social Europe EmDash image and push it to GHCR, one tag per host (the site URL is baked in at build time,
+# see Dockerfile): ghcr.io/<owner>/se-web:staging and :production. Bunny Magic Containers runs the pinned digest.
 name: image
 on:
   push:
@@ -10,6 +11,13 @@ jobs:
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        include:
+          - env: staging
+            site_url: https://mc-hdck3f7ufk.bunny.run
+          - env: production
+            site_url: https://www.socialeurope.eu
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -24,19 +32,22 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          build-args: |
+            EMDASH_SITE_URL=${{ matrix.site_url }}
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:${{ matrix.env }}
+            ghcr.io/${{ github.repository }}:${{ matrix.env }}-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # Bunny Magic Containers app "SE EmDash": pin the container template to the digest just built, then deploy
-      # (a plain deploy re-runs the digest already pinned in the template, it does not re-resolve :latest)
-      - name: Deploy on Bunny
+      # Bunny Magic Containers app "SE EmDash" (staging): pin the container template to the digest just built, then
+      # deploy (a plain deploy re-runs the digest already pinned in the template, it does not re-resolve the tag)
+      - name: Deploy on Bunny (staging)
+        if: matrix.env == 'staging'
         env:
           BUNNY_API_KEY: ${{ secrets.BUNNY_API_KEY }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           curl -sf -X PATCH -H "AccessKey: $BUNNY_API_KEY" -H "Accept: application/json" -H "Content-Type: application/json" \
-            -d "{\"imageDigest\": \"$DIGEST\"}" https://api.bunny.net/mc/apps/M2IE2fr9dVHjjff/containers/M2IE2fr9dVHjjff-CXd3 >/dev/null && echo "template pinned to $DIGEST"
+            -d "{\"imageTag\": \"staging\", \"imageDigest\": \"$DIGEST\"}" https://api.bunny.net/mc/apps/M2IE2fr9dVHjjff/containers/M2IE2fr9dVHjjff-CXd3 >/dev/null && echo "template pinned to $DIGEST"
           curl -sf -X POST -H "AccessKey: $BUNNY_API_KEY" -H "Accept: application/json" \
             https://api.bunny.net/mc/apps/M2IE2fr9dVHjjff/deploy && echo "deploy triggered"

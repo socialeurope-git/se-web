@@ -27,7 +27,9 @@ const title = d.title; const dek = (d.excerpt as string) ?? "";
 const bylines = credits(post);
 const category = categoryOf(post);
 const fi = d.featured_image;
-const heroBg = fi?.src ? (await getImage({ src: absolute(fi.src)!, width: 1280, height: 720, format: "webp" })).src : "";
+// the hero background goes through Astro's image endpoint like <Image> from emdash/ui: the media path made absolute on the public origin
+const publicOrigin = (Astro.locals as { emdash?: { config?: { siteUrl?: string } } }).emdash?.config?.siteUrl?.replace(/\/$/, "") || Astro.url.origin;
+const heroBg = fi?.src ? (await getImage({ src: fi.src.startsWith("/") ? publicOrigin + fi.src : fi.src, width: 1280, height: 720, format: "webp" })).src : "";
 const canonical = postUrl(slug);
 const seo = getSeoMeta(post as never, { siteTitle: SITE_TITLE, siteUrl: SITE, path: `/${slug}`, titleSeparator: " - ", defaultOgImage: absolute(fi?.src) ?? undefined, defaultDescription: dek || undefined });
 const [related, top] = await Promise.all([relatedPosts(category, slug, 7), mostRead(10)]);

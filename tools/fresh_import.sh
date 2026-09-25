@@ -15,6 +15,7 @@ fi
 export SE_BASE="$BASE"
 # remove the blog template's seeded sample content (the bypass seeds it on a fresh database)
 export SE_AUTH="$AUTH"
+if [ "${SE_START_AT:-}" != "media" ]; then
 python3 - <<'PY'
 import json,subprocess,os
 seed=json.load(open('seed/seed.json'))
@@ -39,21 +40,54 @@ for WXR in "$@"; do
   python3 -c "import json;d=json.load(open('archive/analyze.json'))['data'];m={'post':{'collection':'posts','enabled':True},'page':{'collection':'pages','enabled':True}};json.dump({'postTypes':[dict(pt,collection=m.get(pt['name'],{}).get('collection',pt.get('suggestedCollection'))) for pt in d['postTypes']],'postTypeMappings':m},open('archive/prepare.json','w'))"
   curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/prepare.json $BASE/_emdash/api/import/wordpress/prepare | python3 -c "import json,sys;r=json.load(sys.stdin);print('prepare:',r.get('success'),(r.get('data') or {}).get('fieldsCreated'),r.get('error',''))"
   curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -F "file=@$WXR;type=text/xml" -F 'config={"postTypeMappings":{"post":{"collection":"posts","enabled":true},"page":{"collection":"pages","enabled":true}},"skipExisting":true}' $BASE/_emdash/api/import/wordpress/execute \
-   | python3 -c "import json,sys;r=json.load(sys.stdin);d=r.get('data') or {};print('$WXR: imported',d.get('imported'),'skipped',d.get('skipped'),'errors',len(d.get('errors',[])),(d['errors'][0]['error'][:100] if d.get('errors') else ''), '' if r.get('success') else r)"
+   | python3 -c "
+import json,sys
+raw=sys.stdin.read()
+try: r=json.loads(raw)
+except Exception: print('$WXR: execute response was not JSON (CDN timeout? the server keeps importing) ->', raw[:80].replace(chr(10),' ')); sys.exit(0)
+d=r.get('data') or {};print('$WXR: imported',d.get('imported'),'skipped',d.get('skipped'),'errors',len(d.get('errors',[])),(d['errors'][0]['error'][:100] if d.get('errors') else ''), '' if r.get('success') else r)"
 done
+# wait until the server-side import is idle (post count stops growing), then report the counts
+python3 - <<'PY2'
+import json,subprocess,os,time
+def total(c):
+    r=subprocess.run(['curl','-s','-b','archive/jar.txt','-H',os.environ['SE_AUTH'],'-H','X-EmDash-Request: 1',os.environ['SE_BASE']+f'/_emdash/api/content/{c}?limit=1'],capture_output=True,text=True)
+    try: return json.loads(r.stdout)['data']['total']
+    except Exception: return None
+last=None
+while True:
+    t=(total('posts'),total('pages'))
+    if t==last and None not in t: break
+    last=t; time.sleep(20)
+print('content on site: posts',t[0],'pages',t[1])
+PY2
+fi
 
 # Media: EmDash's importer downloads every attachment of the last analysed WXR into its storage (Media Library),
 # then rewrites image blocks / image fields / string fields to the new URLs. Raw HTML blocks + the redirect map: tools/rewrite_html_blocks.py.
-python3 -c "import json;a=json.load(open('archive/analyze.json'))['data']['attachments']['items'];json.dump({'attachments':a,'stream':False},open('archive/media-req.json','w'));print('attachments to import:',len(a))"
-curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/media-req.json --max-time 3600 $BASE/_emdash/api/import/wordpress/media -o archive/media-import-raw.json
-python3 -c "import json;r=json.load(open('archive/media-import-raw.json'));d=r.get('data') or r;json.dump(d,open('archive/media-import.json','w'));print('media: imported',len(d.get('imported',[])),'failed',len(d.get('failed',[])),(d['failed'][:2] if d.get('failed') else ''))"
+[ -f archive/analyze.json ] || curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -F "file=@$1;type=text/xml" $BASE/_emdash/api/import/wordpress/analyze -o archive/analyze.json
+python3 -c "import json;a=json.load(open('archive/analyze.json'))['data']['attachments']['items'];json.dump({'attachments':a,'stream':True},open('archive/media-req.json','w'));print('attachments to import:',len(a))"
+# streaming NDJSON (EmDash's default): progress lines keep the connection alive through the CDN, the last line is the result
+curl -s -N -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/media-req.json --max-time 7200 $BASE/_emdash/api/import/wordpress/media -o archive/media-import-raw.ndjson
+python3 -c "
+import json
+lines=[l for l in open('archive/media-import-raw.ndjson') if l.strip()]
+res=[json.loads(l) for l in lines if l.startswith('{') and '\"type\":\"result\"' in l]
+if not res: print('media: no result line;', len(lines), 'lines, last:', (lines[-1][:200] if lines else '')); raise SystemExit(1)
+d=res[-1]; d.pop('type',None); json.dump(d,open('archive/media-import.json','w'))
+print('media: imported',len(d.get('imported',[])),'failed',len(d.get('failed',[])),(d['failed'][:2] if d.get('failed') else ''))"
 # raw HTML blocks first (keeps WordPress's exact size variants via the image endpoint), incl. content images WordPress never registered
 python3 tools/rewrite_html_blocks.py
 python3 tools/import_orphan_media.py
 python3 tools/rewrite_html_blocks.py | tail -1
 # then EmDash's own rewrite for image blocks, image fields (featured_image) and string fields
 python3 -c "import json;d=json.load(open('archive/media-import.json'));json.dump({'urlMap':d['urlMap'],'collections':['posts','pages']},open('archive/rewrite-req.json','w'))"
-curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/rewrite-req.json --max-time 1800 $BASE/_emdash/api/import/wordpress/rewrite-urls | python3 -c "import json,sys;r=json.load(sys.stdin);print('rewrite-urls:',r.get('success'),{k:v for k,v in (r.get('data') or {}).items() if not isinstance(v,list)})"
+curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/rewrite-req.json --max-time 1800 $BASE/_emdash/api/import/wordpress/rewrite-urls | python3 -c "
+import json,sys
+raw=sys.stdin.read()
+try: r=json.loads(raw)
+except Exception: print('rewrite-urls: response was not JSON (CDN timeout? the server keeps rewriting) ->', raw[:80].replace(chr(10),' ')); sys.exit(0)
+print('rewrite-urls:',r.get('success'),{k:v for k,v in (r.get('data') or {}).items() if not isinstance(v,list)})"
 
 # Bylines = source of truth for authorship: CAP co-author bylines, bios, websites, portrait media; full author list per post
 python3 tools/sync_bylines.py | tail -2

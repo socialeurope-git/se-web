@@ -2,7 +2,7 @@
 """After EmDash's media import and BEFORE its rewrite-urls step (which collapses every size variant onto the original):
 the importer rewrites image/gallery blocks and string fields, but not the raw `htmlBlock` blocks inside Portable Text. This pass rewrites every /wp-content/uploads/ URL in those blocks
 (exact match, or WordPress size variant -> the original media) and saves the entry without a new revision.
-Also writes src/se/data/media-map.json (old URL -> EmDash media URL) for the runtime redirects + theme helper."""
+Also writes archive/media-map.json (old URL -> EmDash media URL) as a record of the import."""
 import json, re, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from emdash_api import api, list_all, ROOT
@@ -21,7 +21,7 @@ for old, new in exact.items():
         alt.setdefault(old + ext, new)    # name.png.webp (older ShortPixel naming)
 SIZE3 = re.compile(r"-(\d+)x(\d+)(?=\.([a-z0-9]+)$)", re.I)
 def map_url(u):
-    """Same rules as src/se/media.ts: original -> media file; WordPress size variant -> Astro image endpoint with the
+    """original -> media file; WordPress size variant -> Astro image endpoint with the
     same width/height/format (so the page keeps WordPress's exact pixel sizes); ShortPixel twin -> converted original."""
     if u in exact: return exact[u]
     ext = (re.search(r"\.([a-z0-9]+)$", u, re.I) or [None, ""])[1].lower()
@@ -35,7 +35,7 @@ def map_url(u):
     f = ext or oext; q["f"] = "jpeg" if f == "jpg" else f
     from urllib.parse import urlencode
     return "/_image?" + urlencode(q)
-json.dump({"exact": exact, "alt": alt}, open(f"{ROOT}/src/se/data/media-map.json", "w"))
+json.dump({"exact": exact, "alt": alt}, open(f"{ROOT}/archive/media-map.json", "w"))
 print("media map:", len(exact), "originals,", len(alt), "webp/avif twins")
 
 URL = re.compile(r"https?://(?:www\.)?socialeurope\.eu/wp-content/uploads/[^\s\"'<>)]+")
