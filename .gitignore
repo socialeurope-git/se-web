@@ -7,3 +7,5 @@ uploads/
 archive/
 uploads-mirror/
 plugins/se-ops/node_modules/
+*.db
+*.db-*
