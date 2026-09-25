@@ -28,3 +28,8 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # Bunny Magic Containers app "SE EmDash" pulls :latest on deploy (imagePullPolicy always)
+      - name: Deploy on Bunny
+        run: |
+          curl -sf -X POST -H "AccessKey: ${{ secrets.BUNNY_API_KEY }}" -H "Accept: application/json" \
+            https://api.bunny.net/mc/apps/M2IE2fr9dVHjjff/deploy && echo "deploy triggered"
