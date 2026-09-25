@@ -2,19 +2,37 @@
 import { getEmDashCollection, getEmDashEntry, getTerm, getBylineBySlug } from "emdash";
 import mostReadSlugs from "./data/most-read.json";
 import type { Entry, Term, Byline } from "./site";
-/** Newest posts of the same category, excluding the current one. (The live site's embedding-based related service can replace this later.) */
+import wpIds from "./data/wp-ids.json";
+/** The se-search sidecar (Go: hybrid search, embedding-based related articles, Plausible "Most Read") answers on
+ *  SE_SEARCH_URL (in the Bunny pod 127.0.0.1:8080). Without it — local development — related = newest posts of the
+ *  same category and Most Read = the seeded slug list. The sidecar still keys legacy posts by their WordPress id. */
+const SEARCH = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.SE_SEARCH_URL?.replace(/\/+$/, "") ?? "";
+const slugToWpId: Record<string, string> = Object.fromEntries(Object.entries((wpIds as { posts: Record<string, string> }).posts).map(([id, slug]) => [slug, id]));
+type Hit = { link?: string; title?: string };
+const slugOfLink = (link?: string) => (link ?? "").replace(/^https?:\/\/[^/]+\//, "").replace(/\/$/, "").split("?")[0];
+async function sidecar(path: string): Promise<Hit[] | null> {
+	if (!SEARCH) return null;
+	try { const r = await fetch(SEARCH + path, { signal: AbortSignal.timeout(1500) }); if (!r.ok) return null; const d = await r.json() as { hits?: Hit[]; results?: Hit[]; items?: Hit[] } | Hit[]; return Array.isArray(d) ? d : (d.hits ?? d.results ?? d.items ?? null); }
+	catch { return null; }
+}
+async function entriesForSlugs(slugs: string[], n: number): Promise<Entry[]> {
+	const out: Entry[] = [];
+	for (const slug of slugs) { if (out.length >= n) break; const { entry } = await getEmDashEntry("posts", slug); if (entry) out.push(entry as unknown as Entry); }
+	return out;
+}
 export async function relatedPosts(category: Term | undefined, excludeSlug: string, n: number): Promise<Entry[]> {
+	const wp = slugToWpId[excludeSlug];
+	const hits = wp ? await sidecar(`/related?id=${wp}&limit=${n}`) : null;
+	if (hits?.length) { const e = await entriesForSlugs(hits.map((h) => slugOfLink(h.link)).filter((s) => s && s !== excludeSlug), n); if (e.length) return e; }
 	if (!category) return [];
 	const { entries } = await getEmDashCollection("posts", { where: { category: category.slug }, orderBy: { published_at: "desc" }, limit: n + 1 });
 	return (entries as unknown as Entry[]).filter((e) => e.id !== excludeSlug).slice(0, n);
 }
-/** Most Read (past seven days) — slugs come from Plausible (src/se/data/most-read.json), entries from EmDash. */
 export async function mostRead(n: number): Promise<Entry[]> {
-	const out: Entry[] = [];
-	for (const slug of (mostReadSlugs as string[]).slice(0, n)) { const { entry } = await getEmDashEntry("posts", slug); if (entry) out.push(entry as unknown as Entry); }
-	return out;
+	const hits = await sidecar(`/popular?limit=${n}`);
+	if (hits?.length) { const e = await entriesForSlugs(hits.map((h) => slugOfLink(h.link)).filter(Boolean), n); if (e.length) return e; }
+	return entriesForSlugs(mostReadSlugs as string[], n);
 }
-
 export type ListingKind = "home" | "category" | "tag" | "author";
 export type ListingData = { kind: ListingKind; slug: string | null; page: number; term: Term | null; byline: Byline | null; entries: Entry[]; hasNext: boolean; cacheHint: unknown };
 /** Archive data for Listing.astro: 15 cards + 14 list items on homepage page 1, 15 per later homepage page, 16 per archive page. Null = 404. */

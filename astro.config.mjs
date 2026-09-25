@@ -23,7 +23,7 @@ export default defineConfig({
 	integrations: [
 		react(),
 		emdash({
-			database: sqlite({ url: "file:./data.db" }),
+			database: sqlite({ url: process.env.EMDASH_DB_URL ?? "file:./data.db" }),   // container: file:/data/data.db on the persistent volume
 			storage,
 			plugins: [auditLog, seOps],
 		}),
