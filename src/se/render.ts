@@ -112,6 +112,8 @@ export function splitTopLevel(html: string): string[] {
 /** Insert widget HTML after the Nth top-level <p>. Rules measured on the live site (spike 1):
  *  related inline after paragraph 5; newsletter box after paragraph 10 or before the last paragraph on short posts. */
 export function injectAfterParagraph(elements: string[], n: number, widget: string): string[] {
+	// WordPress semantics: insert directly after the n-th paragraph; if the post has fewer paragraphs, append at the very end
+	// (after anything already appended). This reproduces the live order for short posts.
 	let count = 0;
 	for (let i = 0; i < elements.length; i++) {
 		if (/^\s*<p[\s>]/.test(elements[i])) { count++; if (count === n) return [...elements.slice(0, i + 1), widget, ...elements.slice(i + 1)]; }

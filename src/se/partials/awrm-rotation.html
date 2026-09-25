@@ -1,0 +1,3 @@
+<script id="awrm-client-rotation">
+(function(){var ids=["block-37","block-38","block-34","block-35","block-36","block-39"];var els=[];for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);if(e){els.push(e);}}var N=els.length;if(N<2){return;}var p=els[0].parentNode;p.style.display='flex';p.style.flexDirection='column';p.style.gap='40px';var o;try{var k='awrm_rot',pv=parseInt(localStorage.getItem(k),10);if(isNaN(pv)){pv=Math.floor(Math.random()*N);}o=((pv%N)+N)%N;localStorage.setItem(k,o+1);}catch(e){o=Math.floor(Math.random()*N);}for(var j=0;j<N;j++){els[j].style.order=((j-o)%N+N)%N;els[j].style.marginBottom='0';}})();
+</script>
