@@ -62,6 +62,7 @@ for coll in ("posts", "pages"):
             api("PUT", f"/_emdash/api/content/{coll}/{eid}", {"data": {"content": blocks}, "skipRevision": True})
             api("POST", f"/_emdash/api/content/{coll}/{eid}/publish", {}); changed += 1
 print(f"html blocks rewritten in {changed} entries; {unmapped} URLs without media ({len(missing)} distinct)")
+json.dump(sorted(missing), open(f"{ROOT}/archive/media-unmapped.json", "w"), indent=1)
 # leftovers from an earlier run: entries whose draft was never published
 for coll in ("posts", "pages"):
     ids = [eid for eid, _s, _c, draft in rows[coll] if draft]
