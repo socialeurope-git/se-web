@@ -6,36 +6,17 @@
 2. Every post carries exactly the Co-Authors-Plus author list (archive/coauthors.json),
    in the CAP order, as explicit bylines.
 
-Uses the admin session cookie (archive/jar.txt) + X-EmDash-Request header.
+Target/credentials: SE_BASE + SE_TOKEN (tools/emdash_api.py), default local dev with the session cookie jar.
   python3 tools/sync_bylines.py --dry-run
   python3 tools/sync_bylines.py --limit 1
   python3 tools/sync_bylines.py
 """
-import argparse, json, re, sqlite3, sys, urllib.request, urllib.error
+import argparse, json, re, sys, os
 from html import unescape
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from emdash_api import api, list_all
 
-BASE = "http://127.0.0.1:4321"
 ROOT = __import__("pathlib").Path(__file__).resolve().parent.parent
-
-def cookie_header():
-    c = []
-    for line in (ROOT / "archive/jar.txt").read_text().splitlines():
-        if line.startswith("#HttpOnly_"): line = line[len("#HttpOnly_"):]
-        if not line or line.startswith("#"): continue
-        p = line.split("\t")
-        if len(p) >= 7: c.append(f"{p[5]}={p[6]}")
-    return "; ".join(c)
-
-COOKIE = cookie_header()
-
-def api(method, path, body=None):
-    req = urllib.request.Request(BASE + path, method=method, data=json.dumps(body).encode() if body is not None else None)
-    req.add_header("Cookie", COOKIE); req.add_header("X-EmDash-Request", "1")
-    if body is not None: req.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(req) as r: return json.load(r)
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f"{method} {path} -> {e.code}: {e.read()[:400]}")
 
 def plain_bio(html):
     if not html: return None
@@ -48,25 +29,17 @@ def main():
     authors = json.load(open(ROOT / "archive/authors.json"))
     coauthors = json.load(open(ROOT / "archive/coauthors.json"))
     posts = {p["id"]: p["slug"] for p in json.load(open(ROOT / "archive/posts.json"))}
-    db = sqlite3.connect(f"file:{ROOT/'data.db'}?mode=ro", uri=True)
-    entry_by_slug = {s: i for s, i in db.execute("select slug, id from ec_posts")}
-    current = {}
-    for cid, bid, so in db.execute("select content_id, byline_id, sort_order from _emdash_content_bylines where collection_slug='posts' order by sort_order"):
-        current.setdefault(cid, []).append(bid)
-    db.close()  # an open reader blocks the dev server's writes
+    posts_api = list_all("/_emdash/api/content/posts")
+    entry_by_slug = {p["slug"]: p["id"] for p in posts_api}
+    current = {p["id"]: [c["byline"]["id"] for c in sorted(p.get("bylines") or [], key=lambda c: c.get("sortOrder", 0))] for p in posts_api}
     def status_of(eid):
-        d = sqlite3.connect(f"file:{ROOT/'data.db'}?mode=ro", uri=True); r = d.execute("select status, draft_revision_id from ec_posts where id=?", (eid,)).fetchone(); d.close(); return r
+        d = api("GET", f"/_emdash/api/content/posts/{eid}")["data"]["item"]; return d.get("status"), d.get("draftRevisionId")
 
     # 1. bylines (custom field photo_credit must exist: created by fresh_import.sh / setup below)
     fields = {f["slug"] for f in (api("GET", "/_emdash/api/admin/byline-fields")["data"].get("items") or [])}
     if "photo_credit" not in fields:
         api("POST", "/_emdash/api/admin/byline-fields", {"slug": "photo_credit", "label": "Photo credit (listed on /photo-credits)", "type": "boolean"}); print("byline field photo_credit created")
-    by_slug = {}; cursor = None
-    while True:
-        d = api("GET", "/_emdash/api/admin/bylines?limit=100" + (f"&cursor={cursor}" if cursor else ""))["data"]
-        for it in d["items"]: by_slug[it["slug"]] = it
-        cursor = d.get("nextCursor")
-        if not cursor: break
+    by_slug = {it["slug"]: it for it in list_all("/_emdash/api/admin/bylines")}
     # portraits: the media import (archive/media-import.json) registered every upload; map the avatar original to its media id
     media_by_url = {}
     mi = ROOT / "archive/media-import.json"

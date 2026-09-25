@@ -4,15 +4,16 @@
 import { htmlToPortableText } from "@emdash-cms/gutenberg-to-portable-text";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-const ROOT = fileURLToPath(new URL("..", import.meta.url)); const BASE = "http://127.0.0.1:4321";
+const ROOT = fileURLToPath(new URL("..", import.meta.url)); const BASE = (process.env.SE_BASE || "http://127.0.0.1:4321").replace(/\/+$/, ""); const TOKEN = process.env.SE_TOKEN || "";
 const dry = process.argv.includes("--dry");
 const html = fs.readFileSync(ROOT + "archive/sidebar-live.html", "utf8");
 const imp = JSON.parse(fs.readFileSync(ROOT + "archive/media-import.json", "utf8"));
 const media = Object.fromEntries(imp.imported.map((i) => [i.originalUrl, i]));
 const SIZE = /-\d+x\d+(?=\.[a-z0-9]+$)/i;
-const cookie = fs.readFileSync(ROOT + "archive/jar.txt", "utf8").split("\n").filter((l) => l && !l.startsWith("# ")).map((l) => l.replace(/^#HttpOnly_/, "").split("\t")).filter((p) => p.length >= 7).map((p) => `${p[5]}=${p[6]}`).join("; ");
+const cookie = TOKEN ? "" : fs.readFileSync(ROOT + "archive/jar.txt", "utf8").split("\n").filter((l) => l && !l.startsWith("# ")).map((l) => l.replace(/^#HttpOnly_/, "").split("\t")).filter((p) => p.length >= 7).map((p) => `${p[5]}=${p[6]}`).join("; ");
+const auth = TOKEN ? { Authorization: `Bearer ${TOKEN}` } : { Cookie: cookie };
 async function api(method, path, body) {
-	const r = await fetch(BASE + path, { method, headers: { Cookie: cookie, "X-EmDash-Request": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+	const r = await fetch(BASE + path, { method, headers: { ...auth, "X-EmDash-Request": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
 	const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(`${method} ${path} ${r.status} ${JSON.stringify(j).slice(0, 300)}`); return j.data ?? j;
 }
 const ads = [];

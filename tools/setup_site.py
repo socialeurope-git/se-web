@@ -1,26 +1,11 @@
 #!/usr/bin/env python3
 """Site-level EmDash data the theme reads at runtime (vanilla EmDash: settings, menus, page fields, SEO panel).
 Runs after the content + media import (fresh_import.sh); idempotent."""
-import json, re, os, sys, subprocess, urllib.request, urllib.error
+import json, re, os, sys, subprocess
 from html import unescape
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); BASE = "http://127.0.0.1:4321"; SITE = "https://www.socialeurope.eu"
-def cookie():
-    c = []
-    for line in open(f"{ROOT}/archive/jar.txt"):
-        if line.startswith("#HttpOnly_"): line = line[10:]
-        if not line.strip() or line.startswith("#"): continue
-        p = line.rstrip("\n").split("\t")
-        if len(p) >= 7: c.append(f"{p[5]}={p[6]}")
-    return "; ".join(c)
-COOKIE = cookie()
-def api(method, path, body=None, ok404=False):
-    req = urllib.request.Request(BASE + path, method=method, data=json.dumps(body).encode() if body is not None else None, headers={"Cookie": COOKIE, "X-EmDash-Request": "1", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req) as r: return json.load(r)
-    except urllib.error.HTTPError as e:
-        if ok404 and e.code == 404: return None
-        raise SystemExit(f"{method} {path} -> {e.code}: {e.read()[:300]}")
-
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from emdash_api import api, list_all, ROOT, BASE, TOKEN
+SITE = "https://www.socialeurope.eu"
 # 1. site settings (POST = update)
 fav = None
 mi = f"{ROOT}/archive/media-import.json"
@@ -55,7 +40,7 @@ for name, (label, items) in MENUS.items():
 
 # 3. pages: SEO panel + template fields + values from the live capture (archive/fixtures/page-*.json)
 api("PUT", "/_emdash/api/schema/collections/pages", {"hasSeo": True}); print("pages: SEO enabled")
-tok = open(f"{ROOT}/archive/token.txt").read().strip()
+tok = TOKEN or open(f"{ROOT}/archive/token.txt").read().strip()
 for field, typ, label in (("template", "string", "Template"), ("intro_title", "string", "Intro title"), ("sidebar", "boolean", "Sidebar"), ("show_cta", "boolean", "Show write-for-us CTA")):
     r = subprocess.run(["npx", "emdash", "schema", "add-field", "pages", field, "--type", typ, "--label", label, "-u", BASE, "-t", tok], capture_output=True, text=True, cwd=ROOT)
     print("field", field, ":", re.sub(r"\x1b\[[0-9;]*m", "", (r.stdout + r.stderr).strip().splitlines()[0] if (r.stdout + r.stderr).strip() else "?"))
@@ -80,11 +65,9 @@ print("pages updated:", pages_done)
 
 # 4. posts: SEO panel = the live head's title/description where WordPress/TSF had custom values (else EmDash derives them)
 posts = {p["id"]: p["slug"] for p in json.load(open(f"{ROOT}/archive/posts.json"))}
-import sqlite3
-db = sqlite3.connect(f"file:{ROOT}/data.db?mode=ro", uri=True)
-ids = {s: i for s, i in db.execute("select slug, id from ec_posts")}
-titles = {i: t for i, t in db.execute("select id, title from ec_posts")}
-db.close()
+posts_api = list_all("/_emdash/api/content/posts")
+ids = {p["slug"]: p["id"] for p in posts_api}
+titles = {p["id"]: (p.get("data") or {}).get("title") for p in posts_api}
 n = 0
 for f in glob.glob(f"{ROOT}/archive/fixtures/[0-9]*.json"):
     fx = json.load(open(f)); slug = posts.get(fx["id"]); eid = ids.get(slug)

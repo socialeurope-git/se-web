@@ -3,17 +3,9 @@
 download the original from the live site and upload it through EmDash's media API, then record it in archive/media-import.json
 so the next rewrite_html_blocks.py run maps and rewrites them like every other file."""
 import json, re, os, sys, urllib.request, urllib.parse, uuid, mimetypes
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); BASE = "http://127.0.0.1:4321"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from emdash_api import api_raw, ROOT
 SIZE = re.compile(r"-\d+x\d+(?=\.[a-z0-9]+$)", re.I)
-def cookie():
-    c = []
-    for line in open(f"{ROOT}/archive/jar.txt"):
-        if line.startswith("#HttpOnly_"): line = line[10:]
-        if not line.strip() or line.startswith("#"): continue
-        p = line.rstrip("\n").split("\t")
-        if len(p) >= 7: c.append(f"{p[5]}={p[6]}")
-    return "; ".join(c)
-COOKIE = cookie()
 imp = json.load(open(f"{ROOT}/archive/media-import.json")); known = {i["originalUrl"] for i in imp["imported"]}
 unmapped = json.load(open(f"{ROOT}/archive/media-unmapped.json"))
 bases = set()
@@ -36,9 +28,7 @@ for u in sorted(bases):
     if not data: continue
     name = os.path.basename(urllib.parse.unquote(u)); bnd = uuid.uuid4().hex
     body = (f"--{bnd}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{name}\"\r\nContent-Type: {ct or mimetypes.guess_type(name)[0] or 'application/octet-stream'}\r\n\r\n").encode() + data + f"\r\n--{bnd}--\r\n".encode()
-    req = urllib.request.Request(BASE + "/_emdash/api/media", data=body, method="POST", headers={"Cookie": COOKIE, "X-EmDash-Request": "1", "Content-Type": f"multipart/form-data; boundary={bnd}"})
-    try:
-        with urllib.request.urlopen(req) as r: res = json.load(r)
+    try: res = api_raw("POST", "/_emdash/api/media", body, f"multipart/form-data; boundary={bnd}")
     except urllib.error.HTTPError as e: print("upload failed", u, e.code, e.read()[:200]); continue
     d = res.get("data") or res; item = d.get("media") or d.get("item") or d
     key = item.get("storageKey") or item.get("storage_key"); mid = item.get("id")
