@@ -40,9 +40,13 @@ done
 python3 -c "import json;a=json.load(open('archive/analyze.json'))['data']['attachments']['items'];json.dump({'attachments':a,'stream':False},open('archive/media-req.json','w'));print('attachments to import:',len(a))"
 curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/media-req.json --max-time 3600 http://127.0.0.1:4321/_emdash/api/import/wordpress/media -o archive/media-import-raw.json
 python3 -c "import json;r=json.load(open('archive/media-import-raw.json'));d=r.get('data') or r;json.dump(d,open('archive/media-import.json','w'));print('media: imported',len(d.get('imported',[])),'failed',len(d.get('failed',[])),(d['failed'][:2] if d.get('failed') else ''))"
+# raw HTML blocks first (keeps WordPress's exact size variants via the image endpoint), incl. content images WordPress never registered
+python3 tools/rewrite_html_blocks.py
+python3 tools/import_orphan_media.py
+python3 tools/rewrite_html_blocks.py | tail -1
+# then EmDash's own rewrite for image blocks, image fields (featured_image) and string fields
 python3 -c "import json;d=json.load(open('archive/media-import.json'));json.dump({'urlMap':d['urlMap'],'collections':['posts','pages']},open('archive/rewrite-req.json','w'))"
 curl -s -b archive/jar.txt -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d @archive/rewrite-req.json --max-time 1800 http://127.0.0.1:4321/_emdash/api/import/wordpress/rewrite-urls | python3 -c "import json,sys;r=json.load(sys.stdin);print('rewrite-urls:',r.get('success'),{k:v for k,v in (r.get('data') or {}).items() if not isinstance(v,list)})"
-python3 tools/rewrite_html_blocks.py
 
 # Bylines = source of truth for authorship: CAP co-author bylines, bios, websites, portrait media; full author list per post
 python3 tools/sync_bylines.py | tail -2
