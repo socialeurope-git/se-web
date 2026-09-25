@@ -76,12 +76,12 @@ def wrap_blocks(body):
         cls=re.search(r'class="([^"]*)"',attrs); cls=set(cls.group(1).split()) if cls else set()
         plain_cls=cls<= {'wp-block-paragraph','wp-block-heading','wp-block-list','wp-block-quote'} | {f'p{i}' for i in range(1,10)}
         text=re.sub(r'<[^>]+>','',el).replace('&nbsp;','').strip()
-        if tag=='p' and plain_cls and 'style=' not in attrs and not re.search(r'<(img|figure|iframe|table|video|audio|picture|br)',el) and text:   # <br> is dropped by the converter -> keep verbatim
+        if tag=='p' and plain_cls and 'style=' not in el and not re.search(r'<(img|figure|iframe|table|video|audio|picture|br|font)',el) and text:   # <br>, inline styles and <font> are dropped by the converter -> keep verbatim
             out.append(f'<!-- wp:paragraph -->\n{el}\n<!-- /wp:paragraph -->')
         elif tag in('h1','h2','h3','h4','h5','h6') and plain_cls and 'style=' not in attrs and ' id=' not in attrs:   # heading anchors (id) are dropped by the converter -> keep raw
             lvl=int(tag[1]); attr='' if lvl==2 else ' {"level":%d}'%lvl
             out.append(f'<!-- wp:heading{attr} -->\n{el}\n<!-- /wp:heading -->')
-        elif tag in('ul','ol') and plain_cls and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el and '<br' not in el:   # <br> inside items would be dropped
+        elif tag in('ul','ol') and plain_cls and '<ul' not in el[3:] and '<ol' not in el[3:] and '<img' not in el and '<br' not in el and 'style=' not in el:   # <br>/styles inside items would be dropped
             attr=' {"ordered":true}' if tag=='ol' else ''
             out.append(f'<!-- wp:list{attr} -->\n{el}\n<!-- /wp:list -->')
         elif tag=='blockquote' and plain_cls and '<img' not in el and not re.search(r'<(ul|ol|h[1-6])',el):
