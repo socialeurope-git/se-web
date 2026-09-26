@@ -105,6 +105,7 @@ function nativeBlocks(html, textAlign) {
 	for (const b of htmlToPortableText(html)) {
 		if (b._type === "block") {
 			b.children = (b.children ?? []).map((c) => ({ ...c, text: (c.text ?? "").replace(/ /g, " ") }));
+			polishSpans(b);
 			if (!b.listItem && b.children.every((c) => !c.text.trim())) { bump("empty block dropped"); continue; }
 			if (b.style === "h1") b.style = "h2";
 			if (textAlign && textAlign !== "left") b.textAlign = textAlign;
@@ -268,9 +269,20 @@ async function convertHtmlBlock(html) {
 	for (const n of frag.childNodes) { if (n.nodeName === "#text" && !n.value.trim()) continue; out.push(...(await convertRoot(n))); }
 	return out;
 }
+function polishSpans(b) {
+	// source errors that survive a faithful conversion: runs of spaces (nbsp + space), and a word glued to the next
+	// capitalised word across a formatting boundary ("<em>Man’s</em><em>Soul</em>") — never after an elided article (l’Union)
+	const ch = b.children ?? [];
+	for (const c of ch) c.text = (c.text ?? "").replace(/ {2,}/g, " ");
+	for (let i = 1; i < ch.length; i++) {
+		const a = ch[i - 1].text ?? "", c = ch[i].text ?? "";
+		if (a && c && /[a-z]$|’s$|'s$/.test(a) && /^[A-Z][a-z]/.test(c) && !(ch[i].marks ?? []).includes("superscript")) { ch[i - 1].text = a + " "; bump("glued words separated"); }
+	}
+}
 function cleanNative(b) {
 	if (b._type !== "block") return b;
 	b.children = (b.children ?? []).map((c) => ({ ...c, text: (c.text ?? "").replace(/ /g, " ") }));
+	polishSpans(b);
 	if (b.style === "h1") { b.style = "h2"; bump("h1 -> h2"); }
 	for (const md of b.markDefs ?? []) if (md._type === "link" && md.href) { const r = relLink(md.href); if (r !== md.href) { md.href = r; bump("self-link relativised"); } }
 	dropJunkLinks(b);
