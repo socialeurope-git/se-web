@@ -154,7 +154,8 @@ async function imageBlocks(el, opts = {}) {
 		if (capHtml && /<a\s|<br\b/i.test(capHtml)) {   // native captions are plain text: links and line breaks need the HTML figure
 			bump(/<a\s/i.test(capHtml) ? "figure kept as html (caption with links)" : "figure kept as html (caption with line breaks)");
 			const sw = (attr(img, "style") || "").match(/width:\s*(\d+)px/);
-			out.push(htmlBlock(`<figure class="se-figure${opts.alignment === "center" ? " aligncenter" : ""}"><img src="${mi.url}" alt="${(attr(img, "alt") || "").replace(/"/g, "&quot;")}"${mi.width ? ` width="${mi.width}" height="${mi.height}"` : ""}${sw ? ` style="width:${sw[1]}px;height:auto"` : ""} loading="lazy"><figcaption>${tidyHtml(capHtml)}</figcaption></figure>`));
+			const al = opts.alignment === "center" ? " aligncenter" : opts.alignment === "left" ? " se-figure--left" : opts.alignment === "right" ? " se-figure--right" : "";
+			out.push(htmlBlock(`<figure class="se-figure${al}"><img src="${mi.url}" alt="${(attr(img, "alt") || "").replace(/"/g, "&quot;")}"${mi.width ? ` width="${mi.width}" height="${mi.height}"` : ""}${sw ? ` style="width:${sw[1]}px;height:auto"` : ""} loading="lazy"><figcaption>${tidyHtml(capHtml)}</figcaption></figure>`));
 			return out.filter(Boolean);
 		}
 		const node = { _type: "image", _key: key(), asset: { _type: "reference", _ref: mi.id, url: mi.url }, alt: (attr(img, "alt") || "").replace(/ /g, " ").trim() };
