@@ -174,7 +174,9 @@ async function imageBlocks(el, opts = {}) {
 		const node = { _type: "image", _key: key(), asset: { _type: "reference", _ref: mi.id, url: mi.url }, alt: (attr(img, "alt") || "").replace(/ /g, " ").trim() };
 		if (mi.width && mi.height) { node.width = mi.width; node.height = mi.height; }
 		// the author resized the image in the editor (WordPress "is-resized": style="width:760px"): keep that display width
-		const sw = (attr(img, "style") || "").match(/width:\s*(\d+)px/) || (attr(el, "style") || "").match(/width:\s*(\d+)px/);
+		let sw = (attr(img, "style") || "").match(/width:\s*(\d+)px/) || (attr(el, "style") || "").match(/width:\s*(\d+)px/);
+		// classic-editor images with a width attribute smaller than the file (external images imported at full size)
+		if (!sw && /^\d+$/.test(attr(img, "width") || "") && mi.width && parseInt(attr(img, "width"), 10) < mi.width) sw = [null, attr(img, "width")];
 		if (sw && mi.width && mi.height) { node.displayWidth = parseInt(sw[1], 10); node.displayHeight = Math.round(node.displayWidth * mi.height / mi.width); bump("display width kept"); }
 		if (mi.blurhash) node.blurhash = mi.blurhash;
 		if (mi.dominantColor) node.dominantColor = mi.dominantColor;
