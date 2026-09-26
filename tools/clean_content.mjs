@@ -106,7 +106,7 @@ function listBlocks(listEl, level) {
 	const kind = listEl.tagName === "ol" ? "number" : "bullet"; const out = [];
 	for (const li of children(listEl).filter((x) => x.tagName === "li")) {
 		const subs = children(li).filter((x) => x.tagName === "ul" || x.tagName === "ol");
-		const own = children(li).filter((x) => !subs.includes(x)).map((x) => (x.tagName ? outer(x) : x.value)).join("");
+		const own = (li.childNodes || []).filter((x) => !subs.includes(x)).map((x) => (x.tagName ? outer(x) : x.value || "")).join("");   // raw child nodes: the space between two inline elements is a whitespace-only text node
 		const { children: ch, markDefs } = parseInlineContent(own.trim(), key);
 		if (ch.length) { const b = { _type: "block", _key: key(), style: "normal", listItem: kind, level, children: ch }; if (markDefs?.length) b.markDefs = markDefs; out.push(b); }
 		for (const sub of subs) out.push(...listBlocks(sub, level + 1));
