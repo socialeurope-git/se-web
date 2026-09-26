@@ -108,10 +108,19 @@ function nativeBlocks(html, textAlign) {
 			if (b.style === "h1") b.style = "h2";
 			if (textAlign && textAlign !== "left") b.textAlign = textAlign;
 			for (const md of b.markDefs ?? []) if (md._type === "link" && md.href) md.href = relLink(md.href);
+			dropJunkLinks(b);
 		}
 		out.push(b);
 	}
 	return out;
+}
+const JUNK_HREF = /^\s*(?:about:blank|file:|c:|javascript:|#?\s*$|http:\/\/(?:&lt;|<)!--)/i;
+function dropJunkLinks(b) {
+	const junk = new Set((b.markDefs ?? []).filter((md) => md._type === "link" && JUNK_HREF.test(md.href ?? "")).map((md) => md._key));
+	if (!junk.size) return;
+	b.markDefs = (b.markDefs ?? []).filter((md) => !junk.has(md._key));
+	b.children = (b.children ?? []).map((c) => ({ ...c, marks: (c.marks ?? []).filter((m) => !junk.has(m)) }));
+	bump("junk link dropped");
 }
 function relLink(href) { const m = href.match(/^https?:\/\/(?:www\.)?socialeurope\.eu(\/.*)?$/); return m ? (m[1] || "/") : href; }
 
@@ -137,7 +146,7 @@ async function imageBlocks(el, opts = {}) {
 		if (mi.width && mi.height) { node.width = mi.width; node.height = mi.height; }
 		if (mi.blurhash) node.blurhash = mi.blurhash;
 		if (mi.dominantColor) node.dominantColor = mi.dominantColor;
-		if (capHtml) node.caption = textOf(cap).replace(/\s+/g, " ").replace(/ /g, " ").trim();
+		if (capHtml) node.caption = textOf(parseFragment(capHtml.replace(/<br\s*\/?>/gi, " "))).replace(/\s+/g, " ").replace(/\u00a0/g, " ").trim();
 		const al = opts.alignment ?? (hasCls(el, "aligncenter") || find(el, (n) => hasCls(n, "aligncenter")) ? "center" : hasCls(el, "alignwide") ? "wide" : hasCls(el, "alignfull") ? "full" : null);
 		if (al) node.alignment = al;
 		if (link) node.link = relLink(link);
@@ -197,7 +206,11 @@ async function convertRoot(n, ctx = {}) {
 		return hasImg ? imageBlocks(n, { alignment: alignOf(n) ?? ctx.align }) : nativeBlocks(outer(n), alignOf(n) ?? ctx.align);
 	}
 	if (tag === "p") return hasImg ? imageBlocks(n, { alignment: alignOf(n) ?? ctx.align }) : nativeBlocks(outer(n), alignOf(n) ?? ctx.align);
-	if (tag === "blockquote") return nativeBlocks(outer(n), alignOf(n) ?? ctx.align);
+	if (tag === "blockquote") {
+		const ps = children(n).filter((c) => c.tagName === "p");
+		if (ps.length > 1) { const out = []; for (const c of children(n)) out.push(...nativeBlocks(`<blockquote>${c.tagName ? outer(c) : `<p>${c.value}</p>`}</blockquote>`, alignOf(n) ?? ctx.align)); bump("multi-paragraph quote split"); return out; }
+		return nativeBlocks(outer(n), alignOf(n) ?? ctx.align);
+	}
 	if (tag === "ul" || tag === "ol") {
 		if (c.includes("wp-block-outermost-social-sharing")) { bump("junk dropped"); return []; }
 		return nativeBlocks(outer(n), null);
@@ -242,6 +255,7 @@ function cleanNative(b) {
 	b.children = (b.children ?? []).map((c) => ({ ...c, text: (c.text ?? "").replace(/ /g, " ") }));
 	if (b.style === "h1") { b.style = "h2"; bump("h1 -> h2"); }
 	for (const md of b.markDefs ?? []) if (md._type === "link" && md.href) { const r = relLink(md.href); if (r !== md.href) { md.href = r; bump("self-link relativised"); } }
+	dropJunkLinks(b);
 	return b;
 }
 const alts = JSON.parse(fs.readFileSync(ROOT + "archive/alts.json", "utf8"));
