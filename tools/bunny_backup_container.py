@@ -8,7 +8,9 @@ app = sys.argv[1] if len(sys.argv) > 1 else "M2IE2fr9dVHjjff"
 key = open(os.path.expanduser("~/.config/se-ebooks/bunny-api-key")).read().strip()
 def api(method, path, body=None):
     r = urllib.request.Request(f"https://api.bunny.net/mc{path}", method=method, headers={"AccessKey": key, "Accept": "application/json", "Content-Type": "application/json"}, data=json.dumps(body).encode() if body is not None else None)
-    try: return json.load(urllib.request.urlopen(r))
+    try:
+        raw = urllib.request.urlopen(r).read()
+        return json.loads(raw) if raw.strip() else {}
     except urllib.error.HTTPError as e: raise SystemExit(f"{method} {path} -> {e.code} {e.read()[:400]}")
 env = dict(l.strip().split("=", 1) for l in open(os.path.expanduser("~/.config/se-web/backup.env")) if "=" in l and not l.startswith("#"))
 a = api("GET", f"/apps/{app}")
