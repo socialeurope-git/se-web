@@ -7,7 +7,7 @@ SRC_MEDIA=":s3,provider=Other,endpoint=${S3_ENDPOINT#https://},region=$S3_REGION
 ping() { [ -z "$1" ] || curl -fsS -o /dev/null "$1" || echo "heartbeat push failed: $1"; }
 db_copy() {
 	# ask the app for a fresh consistent snapshot (VACUUM INTO on its own connection; containers share localhost)
-	curl -fsS -X POST -H "Authorization: Bearer $SE_OPS_TOKEN" "http://localhost:${PORT:-4321}/_ops/snapshot" || echo "snapshot request failed"
+	curl -fsS -X POST -H "Authorization: Bearer $SE_OPS_TOKEN" "http://localhost:${PORT:-4321}/ops/snapshot" || echo "snapshot request failed"
 	echo
 	n=$(ls /app/data/backup/*.db 2>/dev/null | wc -l)
 	if [ "$n" -eq 0 ]; then echo "db copy: no snapshot in /app/data/backup yet"; return 1; fi
