@@ -4,7 +4,7 @@
 #   - rclone copies the media bucket (Bunny S3) to the backup bucket once a day
 FROM litestream/litestream:0.5 AS litestream
 FROM alpine:3.21
-RUN apk add --no-cache rclone ca-certificates tzdata
+RUN apk add --no-cache rclone curl ca-certificates tzdata
 COPY --from=litestream /usr/local/bin/litestream /usr/local/bin/litestream
 COPY litestream.yml /etc/litestream.yml
 COPY run.sh /run.sh
