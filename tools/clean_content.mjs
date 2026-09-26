@@ -255,10 +255,10 @@ async function convertRoot(n, ctx = {}) {
 		if (c.includes("wp-block-table") || find(n, (x) => x.tagName === "table")) {
 			const cap = find(n, (x) => x.tagName === "figcaption"), tbl = find(n, (x) => x.tagName === "table");
 			// native table blocks size columns by content; the editor's "fixed layout" (equal columns) has no native equivalent
-			const fixed = /\bhas-fixed-layout\b/.test(attr(tbl, "class") || "");
-			if ((cap && textOf(cap).trim()) || fixed) {
-				bump(fixed ? "table kept as html (fixed layout)" : "table kept as html (caption)");
-				return [htmlBlock(`<figure class="se-table${fixed ? " se-table--fixed" : ""}"><table>${tidyHtml(inner(tbl))}</table>${cap && textOf(cap).trim() ? `<figcaption>${tidyHtml(inner(cap))}</figcaption>` : ""}</figure>`)];
+			const fixed = /\bhas-fixed-layout\b/.test(attr(tbl, "class") || ""), centred = c.includes("aligncenter"), stripes = c.includes("is-style-stripes");
+			if ((cap && textOf(cap).trim()) || fixed || centred || stripes) {
+				bump(fixed ? "table kept as html (fixed layout)" : centred || stripes ? "table kept as html (aligned/striped)" : "table kept as html (caption)");
+				return [htmlBlock(`<figure class="se-table${fixed ? " se-table--fixed" : ""}${centred ? " aligncenter" : ""}${stripes ? " se-table--stripes" : ""}"><table>${tidyHtml(inner(tbl))}</table>${cap && textOf(cap).trim() ? `<figcaption>${tidyHtml(inner(cap))}</figcaption>` : ""}</figure>`)];
 			}
 			return tableBlock(tbl);
 		}

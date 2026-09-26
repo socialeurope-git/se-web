@@ -60,7 +60,12 @@
 /* Tables with a source caption stay tidy HTML (EmDash tables have no caption): same look as the WordPress table figure */
 .entry-content figure.se-table { margin: 0; display: flow-root; }
 .entry-content figure.se-table--fixed table { table-layout: fixed; width: 100%; }   /* the editor's "fixed layout" table: equal columns at every width */
-.entry-content figure.se-table table { margin: 0; }
+.entry-content figure.se-table > table { margin: 0 0 1.5em; }   /* WordPress: the table's own bottom margin makes the gap to the next paragraph */
+.entry-content figure.se-table.aligncenter { display: table; width: auto; margin-inline: auto; }   /* WordPress aligned table: shrink-wrapped and centred */
+.entry-content figure.se-table.aligncenter > table { width: auto; }
+.entry-content figure.se-table--stripes > table { border-collapse: inherit !important; border-spacing: 0; }   /* WordPress "stripes" style: no cell borders, shaded odd rows */
+.entry-content figure.se-table--stripes th, .entry-content figure.se-table--stripes td { border: 0 !important; border-bottom: 1px solid currentColor !important; }
+.entry-content figure.se-table--stripes tbody tr:nth-child(odd) { background-color: #f0f0f0; }
 .entry-content figure.se-table figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }
 /* Native tables, cell level: EmDash's scoped table styles (0.9rem, .75rem padding, grey header, zebra rows, top-aligned) beat the
    frozen WordPress rules by specificity; this restores the WordPress table-block look (collapsed 1px borders, .5em cells, body font). */
