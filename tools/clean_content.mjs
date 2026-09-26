@@ -153,11 +153,15 @@ async function imageBlocks(el, opts = {}) {
 		if (!mi) { bump("image kept as html (no media)"); out.push(htmlBlock(tidyHtml(outer(el)))); return out.filter(Boolean); }
 		if (capHtml && /<a\s/i.test(capHtml)) {
 			bump("figure kept as html (caption with links)");
-			out.push(htmlBlock(`<figure class="se-figure${opts.alignment === "center" ? " aligncenter" : ""}"><img src="${mi.url}" alt="${(attr(img, "alt") || "").replace(/"/g, "&quot;")}"${mi.width ? ` width="${mi.width}" height="${mi.height}"` : ""} loading="lazy"><figcaption>${tidyHtml(capHtml)}</figcaption></figure>`));
+			const sw = (attr(img, "style") || "").match(/width:\s*(\d+)px/);
+			out.push(htmlBlock(`<figure class="se-figure${opts.alignment === "center" ? " aligncenter" : ""}"><img src="${mi.url}" alt="${(attr(img, "alt") || "").replace(/"/g, "&quot;")}"${mi.width ? ` width="${mi.width}" height="${mi.height}"` : ""}${sw ? ` style="width:${sw[1]}px;height:auto"` : ""} loading="lazy"><figcaption>${tidyHtml(capHtml)}</figcaption></figure>`));
 			return out.filter(Boolean);
 		}
 		const node = { _type: "image", _key: key(), asset: { _type: "reference", _ref: mi.id, url: mi.url }, alt: (attr(img, "alt") || "").replace(/ /g, " ").trim() };
 		if (mi.width && mi.height) { node.width = mi.width; node.height = mi.height; }
+		// the author resized the image in the editor (WordPress "is-resized": style="width:760px"): keep that display width
+		const sw = (attr(img, "style") || "").match(/width:\s*(\d+)px/) || (attr(el, "style") || "").match(/width:\s*(\d+)px/);
+		if (sw && mi.width && mi.height) { node.displayWidth = parseInt(sw[1], 10); node.displayHeight = Math.round(node.displayWidth * mi.height / mi.width); bump("display width kept"); }
 		if (mi.blurhash) node.blurhash = mi.blurhash;
 		if (mi.dominantColor) node.dominantColor = mi.dominantColor;
 		if (capHtml) node.caption = textOf(parseFragment(capHtml.replace(/<br\s*\/?>/gi, " "))).replace(/\s+/g, " ").replace(/\u00a0/g, " ").trim();
