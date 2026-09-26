@@ -49,7 +49,9 @@ SQLite snapshot plus the media bucket plus `EMDASH_ENCRYPTION_KEY` (kept in `~/.
 
 - **Snapshot from inside the app** (single connection): `POST /ops/snapshot` with `Authorization: Bearer $SE_OPS_TOKEN`
   (env on the app container; `~/.config/se-web/ops-token`) runs `VACUUM INTO /app/data/backup/data-<timestamp>.db` on
-  EmDash's own database handle and prunes snapshots older than 3 days. The sidecar calls it on `localhost:4321` inside the pod;
+  EmDash's own database handle and keeps only the newest two snapshots (each is a full ~0.4 GB copy; hourly snapshots
+  filled the 5 GB volume to 85 % on 2026-09-26 — the uploader now asks once a day). Volume sizing: database + WAL +
+  two snapshots ≈ 1.5 GB, 5 GB is fine; Bunny mails at 75 %. The sidecar calls it on `localhost:4321` inside the pod;
   through the CDN the request needs a JSON body (Bunny answers 405 to a bodiless POST).
 - **Sidecar `backup`** (`backup/Dockerfile`, image `ghcr.io/socialeurope-git/se-web-backup`, same volume, read-only role):
   rclone copies `/app/data/backup/` and the media bucket to Scaleway `social-europe-backup-amsterdam/<prefix>/` once a day and pings
