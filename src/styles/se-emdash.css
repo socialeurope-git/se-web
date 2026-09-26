@@ -1,7 +1,7 @@
 /* Bridge: EmDash's default Portable Text markup -> the GeneratePress/WordPress rules of the frozen stylesheets.
    (EmDash renders <figure class="emdash-image">, plain <blockquote>, <div class="emdash-html-block">;
    WordPress rendered .wp-block-image / .wp-block-quote / raw HTML without a wrapper.) */
-.entry-content figure.emdash-image { margin: 0 0 1.5em; display: flow-root; }   /* flow-root: the caption's bottom margin stays inside the figure (WordPress uses display:table) */
+.entry-content figure.emdash-image { margin: 0; display: flow-root; }   /* WordPress: figure margin 0, the following paragraph keeps its own spacing */   /* flow-root: the caption's bottom margin stays inside the figure (WordPress uses display:table) */
 .entry-content figure.emdash-image img { box-sizing: border-box; height: auto; max-width: 100%; vertical-align: bottom; }
 .entry-content figure.emdash-image figcaption { font-size: 13px !important; line-height: 1.7 !important; text-align: center; margin: .5em 0 1em !important; padding: 0 !important; color: inherit; }   /* !important: EmDash's scoped Image styles (14px, 8/14px margins) would win otherwise */
 .entry-content figure.emdash-image--align-center { text-align: center; }
@@ -45,7 +45,7 @@
 /* Sponsor note (was an inline-styled div in WordPress) */
 .entry-content .se-sponsor-note { background-color: #eff7fb; padding: 8px 16px; font-family: system-ui; font-size: 20px; font-style: italic; text-align: center; margin: 16px 0; }
 /* Figures whose caption carries links (EmDash image captions are plain text) and embeds (YouTube via youtube-nocookie) */
-.entry-content figure.se-figure { margin: 0 0 1.5em; display: flow-root; }   /* keeps the caption's bottom margin inside the figure, like the display:table figure of the live site */
+.entry-content figure.se-figure { margin: 0; display: flow-root; }   /* keeps the caption's bottom margin inside the figure, like the display:table figure of the live site */
 .entry-content figure.se-figure.aligncenter { text-align: center; }
 .entry-content figure.se-figure img { height: auto; max-width: 100%; vertical-align: bottom; }
 .entry-content figure.se-figure figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }
@@ -55,6 +55,6 @@
 .entry-content .emdash-table-wrapper { margin: 0 0 1.5em; overflow-x: auto; }
 .entry-content .emdash-table-wrapper table { margin: 0; }
 /* Tables with a source caption stay tidy HTML (EmDash tables have no caption): same look as the WordPress table figure */
-.entry-content figure.se-table { margin: 0 0 1.5em; display: flow-root; }
+.entry-content figure.se-table { margin: 0; display: flow-root; }
 .entry-content figure.se-table table { margin: 0; }
 .entry-content figure.se-table figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }
