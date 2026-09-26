@@ -151,8 +151,8 @@ async function imageBlocks(el, opts = {}) {
 		let mi = mediaFromSrc(src);
 		if (!mi && /^https?:\/\//.test(src) && !/socialeurope\.eu/.test(src)) mi = await importExternal(src);
 		if (!mi) { bump("image kept as html (no media)"); out.push(htmlBlock(tidyHtml(outer(el)))); return out.filter(Boolean); }
-		if (capHtml && /<a\s/i.test(capHtml)) {
-			bump("figure kept as html (caption with links)");
+		if (capHtml && /<a\s|<br\b/i.test(capHtml)) {   // native captions are plain text: links and line breaks need the HTML figure
+			bump(/<a\s/i.test(capHtml) ? "figure kept as html (caption with links)" : "figure kept as html (caption with line breaks)");
 			const sw = (attr(img, "style") || "").match(/width:\s*(\d+)px/);
 			out.push(htmlBlock(`<figure class="se-figure${opts.alignment === "center" ? " aligncenter" : ""}"><img src="${mi.url}" alt="${(attr(img, "alt") || "").replace(/"/g, "&quot;")}"${mi.width ? ` width="${mi.width}" height="${mi.height}"` : ""}${sw ? ` style="width:${sw[1]}px;height:auto"` : ""} loading="lazy"><figcaption>${tidyHtml(capHtml)}</figcaption></figure>`));
 			return out.filter(Boolean);

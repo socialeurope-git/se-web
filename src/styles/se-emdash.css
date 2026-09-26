@@ -3,7 +3,7 @@
    WordPress rendered .wp-block-image / .wp-block-quote / raw HTML without a wrapper.) */
 .entry-content figure.emdash-image { margin: 0; display: flow-root; }   /* WordPress: figure margin 0, the following paragraph keeps its own spacing */   /* flow-root: the caption's bottom margin stays inside the figure (WordPress uses display:table) */
 .entry-content figure.emdash-image img { box-sizing: border-box; height: auto; max-width: 100%; vertical-align: bottom; }
-.entry-content figure.emdash-image figcaption { font-size: 13px !important; line-height: 1.7 !important; text-align: center; margin: .5em 0 1em !important; padding: 0 !important; color: inherit; }   /* !important: EmDash's scoped Image styles (14px, 8/14px margins) would win otherwise */
+.entry-content figure.emdash-image figcaption { font-size: 13px !important; line-height: 1.7 !important; text-align: center; margin: .5em 0 1em !important; padding: 0 !important; color: inherit !important; }   /* EmDash colours captions secondary; WordPress inherits the text colour */   /* !important: EmDash's scoped Image styles (14px, 8/14px margins) would win otherwise */
 .entry-content figure.emdash-image--align-center { text-align: center; }
 .entry-content figure.emdash-image--align-left { float: left; margin: .5em 1em .5em 0; }
 .entry-content figure.emdash-image--align-right { float: right; margin: .5em 0 .5em 1em; }
@@ -62,7 +62,7 @@
 .entry-content figure.se-table figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }
 /* Native tables, cell level: EmDash's scoped table styles (0.9rem, .75rem padding, grey header, zebra rows, top-aligned) beat the
    frozen WordPress rules by specificity; this restores the WordPress table-block look (collapsed 1px borders, .5em cells, body font). */
-.entry-content .emdash-table { border-collapse: collapse !important; font-size: inherit !important; }
-.entry-content .emdash-table th, .entry-content .emdash-table td { border: 1px solid currentColor !important;   /* the WordPress table block: 1px solid in the text colour */ padding: .5em !important; vertical-align: middle !important; }
+.entry-content .emdash-table, .entry-content figure.se-table table { border-collapse: collapse !important; font-size: inherit !important; }
+.entry-content .emdash-table th, .entry-content .emdash-table td, .entry-content figure.se-table th, .entry-content figure.se-table td { border: 1px solid currentColor !important;   /* the WordPress table block: 1px solid in the text colour */ padding: .5em !important; vertical-align: middle !important; }
 .entry-content .emdash-table th { background: none !important; font-weight: 700 !important; }
 .entry-content .emdash-table tbody tr:nth-child(2n), .entry-content .emdash-table tbody tr:hover { background: none !important; }
