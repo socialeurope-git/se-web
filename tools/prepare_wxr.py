@@ -23,7 +23,14 @@ def fix_heading(m):
     return out
 JUNK_HREF = re.compile(r'^\s*(?:about:blank|file:|c:|javascript:|#?\s*$|http://(?:&lt;|<)!--)', re.I)
 def clean_body(body):
-    b = re.sub(r"<(h[1-6])([^>]*)>([\s\S]*?)</\1>", lambda m: fix_heading(m) if "<figure" in m.group(3) else m.group(0), body)
+    # a heading block whose element wraps a figure: the image block must sit OUTSIDE the heading's block comments
+    def heading_block(m):
+        if "<figure" not in m.group(5): return m.group(0)
+        fixed = fix_heading(re.match(r"<(h[1-6])([^>]*)>([\s\S]*?)</\1>", m.group(2)))   # image block(s) + heading element (if any text is left)
+        tag_open = f"<{m.group(3)}{m.group(4)}>"
+        return fixed.replace(tag_open, f"{m.group(1)}{tag_open}", 1) + (m.group(6) if tag_open in fixed else "")
+    b = re.sub(r"(<!-- wp:heading(?: \{[^}]*\})? -->\s*)(<(h[1-6])([^>]*)>([\s\S]*?)</\3>)(\s*<!-- /wp:heading -->)", heading_block, body)
+    b = re.sub(r"<(h[1-6])([^>]*)>([\s\S]*?)</\1>", lambda m: fix_heading(m) if "<figure" in m.group(3) else m.group(0), b)
     # protect preformatted content
     keep = []
     def stash(m): keep.append(m.group(0)); return f"\x00{len(keep) - 1}\x00"

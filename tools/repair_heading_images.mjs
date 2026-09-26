@@ -32,18 +32,26 @@ for (const it of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
 	const e = await api("GET", `/_emdash/api/content/posts/${slug}`); const entry = e.item ?? e; const content = entry.data.content;
 	const btxt = (b) => b._type === "block" ? (b.children || []).map((c) => c.text || "").join("").replace(/\s+/g, " ").trim() : "";
 	let changed = false;
-	seq.forEach((s, idx) => {
-		if (!/^h[1-6]$/.test(s.tag)) return; const img = find(s.n, (x) => x.tagName === "img"); if (!img) return;
+	for (let idx = 0; idx < seq.length; idx++) { const s = seq[idx];
+		if (!/^h[1-6]$/.test(s.tag)) continue; const img = find(s.n, (x) => x.tagName === "img"); if (!img) continue;
 		const src = (attr(img, "src") || "").split("?")[0]; const orig = src.replace(SIZE, "");
-		const mi = byUrl.get(orig) || byUrl.get(src); if (!mi) { console.log(slug, "no media for", src); return; }
-		const already = content.some((b) => b._type === "image" && b.asset?._ref === mi.mediaId); if (already) return;
+		let mi = byUrl.get(orig) || byUrl.get(src); if (!mi) { console.log(slug, "no media for", src); continue; }
+		// the media item may have been removed as unreferenced: re-upload from the live site
+		const exists = await fetch(BASE + "/_emdash/api/media/" + mi.mediaId, { headers: { ...auth, "X-EmDash-Request": "1" } }).then((r) => r.ok).catch(() => false);
+		if (!exists && !dry) {
+			const r = await fetch(orig, { signal: AbortSignal.timeout(30000) }); if (!r.ok) { console.log(slug, "live download failed", orig); continue; }
+			const buf = Buffer.from(await r.arrayBuffer()); const fd = new FormData(); fd.append("file", new Blob([buf], { type: r.headers.get("content-type") || "image/jpeg" }), decodeURIComponent(orig.split("/").pop()));
+			const up = await fetch(BASE + "/_emdash/api/media", { method: "POST", headers: { ...auth, "X-EmDash-Request": "1" }, body: fd }); const j = await up.json(); const item = j.data?.item ?? j.data ?? j;
+			mi = { mediaId: item.id, newUrl: item.url }; console.log(slug, "re-uploaded", orig.split("/").pop());
+		}
+		const already = content.some((b) => b._type === "image" && b.asset?._ref === mi.mediaId); if (already) continue;
 		// anchor: the nearest preceding top-level element with text that exists as a block on staging
 		let at = -1;
 		for (let j = idx - 1; j >= 0 && at < 0; j--) { const t = seq[j].txt; if (t.length < 15) continue; const k = content.findIndex((b) => btxt(b) === t || (btxt(b) && t.startsWith(btxt(b).slice(0, 60)))); if (k >= 0) at = k + 1; }
 		if (at < 0) { console.log(slug, "no anchor found, appending"); at = content.length; }
 		const node = { _type: "image", _key: key(), asset: { _type: "reference", _ref: mi.mediaId, url: mi.newUrl }, alt: (attr(img, "alt") || "").trim() };
 		content.splice(at, 0, node); inserted++; changed = true;
-	});
+	}
 	if (changed) {
 		fixed++; console.log(`${slug}: images restored (${content.filter((b) => b._type === "image").length} image blocks now)`);
 		if (!dry) { await api("PUT", `/_emdash/api/content/posts/${entry.id}`, { data: { content }, skipRevision: true }); await api("POST", `/_emdash/api/content/posts/${entry.id}/publish`, {}); }
