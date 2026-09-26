@@ -39,14 +39,20 @@ After the first start: Admin → Plugins → SE Ops → settings: Bunny API key,
 
 ## Backups (EmDash docs: "Backups and recovery")
 
-EmDash's own daily backup is a JSON export into the bucket and **cannot be restored**. The restorable copy is the SQLite
-database plus the media bucket plus `EMDASH_ENCRYPTION_KEY` (kept in `~/.config/se-web/`).
+**Single writer rule.** The Magic Containers volume is a 9p mount (gVisor sandbox, `cache=remote_revalidating`). SQLite in
+WAL mode must be opened by **one process only**: a Litestream sidecar sharing the file corrupted the staging database
+within seconds of the first mass write (2026-09-26, "database disk image is malformed"). Nothing but the EmDash process
+opens `data.db`.
 
-- **Sidecar container `backup`** in the same Magic Containers app (`backup/Dockerfile`, image `ghcr.io/socialeurope-git/se-web-backup`),
-  mounted on the same `/app/data` volume. Litestream replicates `data.db` continuously to Scaleway
-  (`social-europe-backup-amsterdam/<prefix>/db`, snapshot every 6 h, 30 days retention) and pings the Uptime Kuma push
-  monitor only while replication is healthy (`BACKUP_HEARTBEAT_URL`). rclone copies the media bucket to
-  `<prefix>/media` once a day (`MEDIA_HEARTBEAT_URL`). Env: `~/.config/se-web/backup.env`; `tools/bunny_backup_container.py` adds the container.
-- **Restore** (tested 2026-09-26 with the local database, Litestream 0.5.17): `litestream restore -config backup/litestream.yml -o data.db /app/data/data.db`
-  with the same env, put the file on a fresh volume as `/app/data/data.db`, media back to the bucket with `rclone sync`, start the app version that matches.
+EmDash's own daily backup is a JSON export into the bucket and **cannot be restored**. The restorable copy is a consistent
+SQLite snapshot plus the media bucket plus `EMDASH_ENCRYPTION_KEY` (kept in `~/.config/se-web/`).
+
+- **Snapshot from inside the app** (single connection): `VACUUM INTO /app/data/backup/data-<timestamp>.db`, run daily
+  by the SE-Ops plugin cron (see `plugins/se-ops`), old snapshots pruned.
+- **Sidecar `backup`** (`backup/Dockerfile`, image `ghcr.io/socialeurope-git/se-web-backup`, same volume, read-only role):
+  rclone copies `/app/data/backup/` and the media bucket to Scaleway `social-europe-backup-amsterdam/<prefix>/` once a day and pings
+  the Uptime Kuma push monitors (`BACKUP_HEARTBEAT_URL` for the database copy, `MEDIA_HEARTBEAT_URL` for the media copy).
+  It never opens `data.db`.
+- **Restore**: put the newest snapshot on a fresh volume as `/app/data/data.db`, media back into the bucket with
+  `rclone sync`, start the matching app version. Env: `~/.config/se-web/backup.env`; `tools/bunny_backup_container.py` adds the sidecar.
 - Prefixes: staging `se-web-staging`, production `se-web`.

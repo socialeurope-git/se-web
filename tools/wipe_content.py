@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Empty a site's content before a fresh import (SE_BASE/SE_TOKEN): every post and page (permanently), the sidebar
+"""DO NOT USE for a full re-import: permanent deletes via the API failed on staging (2026-09-26) and a fresh volume
+(tools/bunny_app_patch.py, new volume name + app volumes list) is the clean way. Kept for partial clean-ups.
+Empty a site's content before a fresh import (SE_BASE/SE_TOKEN): every post and page (permanently), the sidebar
 widgets and every media item. Users, bylines (re-linked by sync_bylines), settings, menus and plugin settings stay.
 Asks for --yes."""
 import os, sys
