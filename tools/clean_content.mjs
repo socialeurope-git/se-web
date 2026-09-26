@@ -100,6 +100,19 @@ function tidyHtml(html) {
 const htmlBlock = (html) => (html.trim() ? { _type: "htmlBlock", _key: key(), html } : null);
 
 // ---------- native conversions ----------
+// Nested lists: the converter glues a sub-list's first item onto its parent item and drops the parent list's later items
+// into plain paragraphs; Portable Text expresses nesting with `level`, so the items are emitted one level deeper.
+function listBlocks(listEl, level) {
+	const kind = listEl.tagName === "ol" ? "number" : "bullet"; const out = [];
+	for (const li of children(listEl).filter((x) => x.tagName === "li")) {
+		const subs = children(li).filter((x) => x.tagName === "ul" || x.tagName === "ol");
+		const own = children(li).filter((x) => !subs.includes(x)).map((x) => (x.tagName ? outer(x) : x.value)).join("");
+		const { children: ch, markDefs } = parseInlineContent(own.trim(), key);
+		if (ch.length) { const b = { _type: "block", _key: key(), style: "normal", listItem: kind, level, children: ch }; if (markDefs?.length) b.markDefs = markDefs; out.push(b); }
+		for (const sub of subs) out.push(...listBlocks(sub, level + 1));
+	}
+	return out;
+}
 function nativeBlocks(html, textAlign) {
 	const out = [];
 	for (const b of htmlToPortableText(html)) {
@@ -235,6 +248,7 @@ async function convertRoot(n, ctx = {}) {
 	}
 	if (tag === "ul" || tag === "ol") {
 		if (c.includes("wp-block-outermost-social-sharing")) { bump("junk dropped"); return []; }
+		if (find(n, (x) => (x.tagName === "ul" || x.tagName === "ol") && x !== n)) { bump("nested list flattened by level"); return listBlocks(n, 1); }
 		return nativeBlocks(outer(n), null);
 	}
 	if (tag === "figure" || tag === "picture" || tag === "img") {
