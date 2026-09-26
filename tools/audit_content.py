@@ -67,7 +67,7 @@ bl_use = C(); no_byline = 0
 for p in posts:
     bs = p.get("bylines") or []
     if not bs: no_byline += 1
-    for b in bs: bl_use[b.get("id") if isinstance(b, dict) else b] += 1
+    for b in bs: bl_use[(b.get("byline") or b).get("id") if isinstance(b, dict) else b] += 1
 print("== bylines", len(bylines), "| posts without byline:", no_byline, "| bylines used:", len(bl_use), "| unused:", len([b for b in bylines if b["id"] not in bl_use]))
 names = C(b["displayName"].strip().lower() for b in bylines); print("duplicate names:", [n for n, c in names.items() if c > 1][:10])
 print("bylines: with avatar", sum(1 for b in bylines if b.get("avatarMediaId")), "| avatar not in media", sum(1 for b in bylines if b.get("avatarMediaId") and b["avatarMediaId"] not in media_by_id), "| with bio", sum(1 for b in bylines if (b.get("bio") or "").strip()), "| bio with HTML", sum(1 for b in bylines if re.search(r"<[a-z]", b.get("bio") or "")), "| isGuest", sum(1 for b in bylines if b.get("isGuest")), "| website", sum(1 for b in bylines if b.get("websiteUrl")))

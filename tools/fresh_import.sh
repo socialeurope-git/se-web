@@ -34,6 +34,9 @@ PY
 # an API token for later CLI/API work in this session (content scopes) — local only; on staging SE_TOKEN is used
 [ -z "$SE_TOKEN" ] && curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d '{"name":"local-dev","scopes":["content:read","content:write","schema:read","schema:write"]}' $BASE/_emdash/api/admin/api-tokens | python3 -c "import json,sys;d=json.load(sys.stdin).get('data') or {};t=d.get('token') or d.get('plaintext') or '';open('archive/token.txt','w').write(t);print('token saved' if t else 'no token')"
 TOKEN="${SE_TOKEN:-$(cat archive/token.txt)}"; npx emdash schema add-field pages excerpt --type text --label Excerpt -u "$BASE" -t "$TOKEN" 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | head -1
+# WordPress quirks fixed before the import (figures nested in headings)
+for W in "$@"; do python3 tools/prepare_wxr.py "$W" "${W%.xml}-clean.xml"; done
+set -- $(for W in "$@"; do printf "%s " "${W%.xml}-clean.xml"; done)
 for WXR in "$@"; do
   # prepare: make sure the target collections have the fields the importer writes (pages lack "excerpt" in the template)
   curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -F "file=@$WXR;type=text/xml" $BASE/_emdash/api/import/wordpress/analyze -o archive/analyze.json

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Media library hygiene after the import (SE_BASE/SE_TOKEN):
   - alt texts from the WordPress attachment meta (archive/alts.json, built from the WXR) and, for portraits, the byline name
-  - percent-encoded filenames decoded (Präsentation1.jpg instead of Pr%C3%A4sentation1.jpg)
   - media nothing references (posts, pages, bylines, widgets, settings) deleted: --delete-unused (dry otherwise)
 Run AFTER tools/clean_content.mjs (it imports external images and changes the references)."""
 import json, os, re, sys, urllib.parse, collections
@@ -35,13 +34,10 @@ for m in media:
     patch = {}
     alt = name_by_avatar.get(m["id"]) or alts.get(orig_by_id.get(m["id"], ""), "")
     if alt and (m.get("alt") or "") != alt: patch["alt"] = alt
-    if "%" in m["filename"]:
-        try: patch["filename"] = urllib.parse.unquote(m["filename"])
-        except Exception: pass
     if patch:
-        api("PATCH", f"/_emdash/api/media/{m['id']}", patch)
-        alt_set += "alt" in patch; fn_set += "filename" in patch
-print(f"media {len(media)}: alt set {alt_set}, filenames decoded {fn_set}, used {len(used)}, unused {len(media) - len(used)}")
+        api("PUT", f"/_emdash/api/media/{m['id']}", patch)
+        alt_set += 1
+print(f"media {len(media)}: alt set {alt_set}, used {len(used)}, unused {len(media) - len(used)} (the API cannot rename files; {sum(1 for m in media if chr(37) in m['filename'])} percent-encoded display names stay)")
 unused = [m for m in media if m["id"] not in used]
 print("unused by type:", dict(collections.Counter(m["mimeType"] for m in unused)))
 json.dump([{k: m[k] for k in ("id", "filename", "mimeType", "size")} for m in unused], open(f"{ROOT}/archive/media-unused.json", "w"), indent=1)
