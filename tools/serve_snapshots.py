@@ -14,6 +14,9 @@ class H(BaseHTTPRequestHandler):
         elif m3: p=f'{A}/live-pages/{m3.group(1)}.html'
         else: self.send_response(404); self.end_headers(); return
         if not os.path.exists(p): self.send_response(404); self.end_headers(); return
-        h=(gzip.open(p,'rt',encoding='utf-8',errors='replace') if p.endswith('.gz') else open(p,encoding='utf-8',errors='replace')).read(); h=re.sub(r'(src|href|srcset)=(["\'])/(?!/)',r'\1=\2https://www.socialeurope.eu/',h).encode()
+        h=(gzip.open(p,'rt',encoding='utf-8',errors='replace') if p.endswith('.gz') else open(p,encoding='utf-8',errors='replace')).read(); h=re.sub(r'(src|href|srcset)=(["\'])/(?!/)',r'\1=\2https://www.socialeurope.eu/',h)
+        # the EmDash site replaces WordPress's non-breaking spaces (paste artefacts around links) by normal spaces: compare like for like
+        i=h.find('<body'); h=(h[:i]+h[i:].replace('&nbsp;',' ').replace('\xa0',' ')) if i>0 else h
+        h=h.encode()
         self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(h))); self.end_headers(); self.wfile.write(h)
 HTTPServer(('127.0.0.1',PORT),H).serve_forever()
