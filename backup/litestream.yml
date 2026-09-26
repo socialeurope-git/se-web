@@ -1,0 +1,18 @@
+# Litestream 0.5 (docs.litestream.io/reference/config): values come from the container environment
+snapshot:
+  interval: 6h        # full snapshot every 6 hours ...
+  retention: 720h     # ... kept for 30 days (point-in-time restore inside that window)
+l0-retention: 24h
+heartbeat-url: ${BACKUP_HEARTBEAT_URL}
+heartbeat-interval: 5m
+dbs:
+  - path: /app/data/data.db
+    replica:
+      type: s3
+      bucket: ${BACKUP_BUCKET}
+      path: ${BACKUP_PREFIX}/db
+      endpoint: ${BACKUP_ENDPOINT}
+      region: ${BACKUP_REGION}
+      access-key-id: ${BACKUP_ACCESS_KEY_ID}
+      secret-access-key: ${BACKUP_SECRET_ACCESS_KEY}
+      sync-interval: 10s
