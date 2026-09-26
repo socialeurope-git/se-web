@@ -79,7 +79,7 @@ function findAll(n, pred, out = []) { if (isEl(n) && pred(n)) out.push(n); for (
 const inner = (n) => serialize(n);
 const outer = (n) => serializeOuter(n);
 const textOf = (n) => (n.nodeName === "#text" ? n.value : (n.childNodes || []).map(textOf).join(""));
-const alignOf = (n) => { const c = cls(n); return c.includes("has-text-align-center") ? "center" : c.includes("has-text-align-right") ? "right" : c.includes("has-text-align-justify") ? "justify" : null; };
+const alignOf = (n) => { const c = cls(n), st = (attr(n, "style") || "").match(/text-align:\s*(center|right|justify)/); return c.includes("has-text-align-center") ? "center" : c.includes("has-text-align-right") ? "right" : c.includes("has-text-align-justify") ? "justify" : st ? st[1] : null; };
 
 // ---------- generic tidy of HTML that stays HTML ----------
 const LIVE_LINK = /https?:\/\/(?:www\.)?socialeurope\.eu(\/[^"'\s<>]*)?/g;
@@ -279,6 +279,9 @@ async function convertRoot(n, ctx = {}) {
 		if (SPONSOR_STYLE.test(attr(n, "style") || "")) { bump("sponsor note"); return [htmlBlock(`<div class="se-sponsor-note">${tidyHtml(inner(n))}</div>`)]; }
 		if (c.includes("wp-block-table")) return tableBlock(find(n, (x) => x.tagName === "table"));
 		if (c.includes("wp-block-embed")) return embedHtml(n);
+		// a div with only inline content is a paragraph (classic-editor captions like <div style="text-align:center"><b>Figure 1</b> (2015)</div>)
+		const BLOCKY = new Set(["div", "p", "ul", "ol", "table", "figure", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "img", "picture", "iframe", "section", "aside", "details", "form", "hr"]);
+		if (children(n).length && !find(n, (x) => x !== n && BLOCKY.has(x.tagName))) { bump("inline div as paragraph"); return nativeBlocks(`<p>${inner(n)}</p>`, alignOf(n) ?? ctx.align); }
 		// wrappers (post_content, article-body, grid columns, plain div): unwrap
 		const out = []; for (const ch of children(n)) out.push(...(await convertRoot(ch, ctx))); bump("wrapper unwrapped"); return out;
 	}
