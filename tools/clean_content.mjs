@@ -275,6 +275,7 @@ function polishSpans(b) {
 	const ch = b.children ?? [];
 	for (const c of ch) c.text = (c.text ?? "").replace(/ {2,}/g, " ");
 	for (let i = 1; i < ch.length; i++) {
+		if ((ch[i - 1].text ?? "").endsWith(" ") && (ch[i].text ?? "").startsWith(" ")) ch[i].text = ch[i].text.replace(/^ +/, "");   // double space across a span boundary
 		const a = ch[i - 1].text ?? "", c = ch[i].text ?? "";
 		if (a && c && /[a-z]$|’s$|'s$/.test(a) && /^[A-Z][a-z]/.test(c) && !(ch[i].marks ?? []).includes("superscript")) { ch[i - 1].text = a + " "; bump("glued words separated"); }
 	}
