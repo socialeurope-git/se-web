@@ -45,7 +45,7 @@
 /* Sponsor note (was an inline-styled div in WordPress) */
 .entry-content .se-sponsor-note { background-color: #eff7fb; padding: 8px 16px; font-family: system-ui; font-size: 20px; font-style: italic; text-align: center; margin: 16px 0; }
 /* Figures whose caption carries links (EmDash image captions are plain text) and embeds (YouTube via youtube-nocookie) */
-.entry-content figure.se-figure { margin: 0 0 1.5em; }
+.entry-content figure.se-figure { margin: 0 0 1.5em; display: flow-root; }   /* keeps the caption's bottom margin inside the figure, like the display:table figure of the live site */
 .entry-content figure.se-figure.aligncenter { text-align: center; }
 .entry-content figure.se-figure img { height: auto; max-width: 100%; vertical-align: bottom; }
 .entry-content figure.se-figure figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }

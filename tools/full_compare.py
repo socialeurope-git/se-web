@@ -22,10 +22,11 @@ def strip_boxes(b):
 def norm_text(b):
     t = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", b, flags=re.S)
     t = re.sub(r"<[^>]+>", " ", t); t = html.unescape(t).replace("\xa0", " ")
+    t = re.sub(r"(^|\s)\+(?=\s|$)", " ", t)   # the accordion's "+" icon is text on live, CSS here
     return re.sub(r"\s+", " ", t).strip()
 def features(h):
     b = strip_boxes(body(h))
-    return {"text": norm_text(b), "imgs": len(re.findall(r"<img\b", b)), "h": len(re.findall(r"<h[2-6]\b", b)), "links": len(re.findall(r"<a\b[^>]*href=", b)), "tables": len(re.findall(r"<table\b", b)), "details": len(re.findall(r"<details\b|wp-block-accordion-item\b", b))}
+    return {"text": norm_text(b), "imgs": len(re.findall(r"<img\b", b)), "h": len(re.findall(r"<h[2-6]\b(?![^>]*wp-block-accordion-heading)", b)), "links": len(re.findall(r"<a\b[^>]*href=", b)), "tables": len(re.findall(r"<table\b", b)), "details": len(re.findall(r"<details\b|wp-block-accordion-item\b", b))}
 LEGACY = {"wp-block class": r'class="[^"]*wp-block-', "data-wp": r"data-wp-", "picture": r"<picture", "sp-no-webp": r"sp-no-webp", "wp-image-N": r"wp-image-\d", "nbsp": r"&nbsp;", "wp-content/uploads (own)": r"socialeurope\.eu/wp-content/uploads", "inline style": r' style="', "absolute self-link": r'href="https?://(?:www\.)?socialeurope\.eu/', "empty p": r"<p[^>]*>\s*</p>"}
 def one(pid):
     slug = ids[pid]
