@@ -165,7 +165,8 @@ async function imageBlocks(el, opts = {}) {
 		if (mi.blurhash) node.blurhash = mi.blurhash;
 		if (mi.dominantColor) node.dominantColor = mi.dominantColor;
 		if (capHtml) node.caption = textOf(parseFragment(capHtml.replace(/<br\s*\/?>/gi, " "))).replace(/\s+/g, " ").replace(/\u00a0/g, " ").trim();
-		const al = opts.alignment ?? (hasCls(el, "aligncenter") || find(el, (n) => hasCls(n, "aligncenter")) ? "center" : hasCls(el, "alignwide") ? "wide" : hasCls(el, "alignfull") ? "full" : null);
+		const has = (c) => hasCls(el, c) || !!find(el, (n) => hasCls(n, c));
+		const al = opts.alignment ?? (has("aligncenter") ? "center" : has("alignleft") ? "left" : has("alignright") ? "right" : has("alignwide") ? "wide" : has("alignfull") ? "full" : null);
 		if (al) node.alignment = al;
 		if (link) node.link = relLink(link);
 		out.push(node); bump("image block");
