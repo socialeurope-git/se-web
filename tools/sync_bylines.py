@@ -2,7 +2,7 @@
 """Phase 2: make EmDash bylines the source of truth for authorship.
 
 1. Every author in archive/authors.json exists as a byline (no login; "guest" in EmDash only means "no user account", so the flag stays off),
-   with bio + website where the WP profile had them.
+   with the plain-text bio (no website: WordPress only had the archive URL there).
 2. Every post carries exactly the Co-Authors-Plus author list (archive/coauthors.json),
    in the CAP order, as explicit bylines.
 
@@ -54,7 +54,7 @@ def main():
     created = updated = 0
     for slug, au in authors.items():
         credit = "se-avatar-credit" in (au.get("avatarBoxHtml") or "")   # portrait listed on /photo-credits (byline field photo_credit)
-        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": au.get("url") or None, "isGuest": False, "avatarMediaId": avatar_media(au), "customFields": {"photo_credit": credit}}
+        body = {"slug": slug, "displayName": au["name"], "bio": plain_bio(au.get("bio")), "websiteUrl": None, "isGuest": False, "avatarMediaId": avatar_media(au), "customFields": {"photo_credit": credit}}
         ex = by_slug.get(slug)
         if not ex:
             print("create", slug); created += 1

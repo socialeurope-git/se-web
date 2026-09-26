@@ -92,10 +92,15 @@ print('rewrite-urls:',r.get('success'),{k:v for k,v in (r.get('data') or {}).ite
 # Bylines = source of truth for authorship: CAP co-author bylines, bios, websites, portrait media; full author list per post
 python3 tools/sync_bylines.py | tail -2
 
+# Clean start: WordPress residue in the Portable Text -> native blocks / tidy HTML, junk dropped, alt texts, no self-links
+python3 tools/wxr_alts.py "$1"
+node tools/clean_content.mjs | tail -20
 # Site data the theme reads from EmDash: settings, menus, page template fields, SEO panel values
 python3 tools/setup_site.py | grep -v '^field'
 # Sidebar advertisements as EmDash widget area (content widgets in Portable Text)
 node tools/ads_to_widgets.mjs | tail -1
+# Media library: alt texts, decoded filenames, unused items (WordPress attachments nothing references) removed
+python3 tools/media_meta.py --delete-unused | tail -3
 
 # Henning's own admin account: the dev server prints the invite e-mail with the accept link (no mail provider locally)
 [ -n "$SE_TOKEN" ] || curl -s -b archive/jar.txt -H "$AUTH" -H "X-EmDash-Request: 1" -H "Content-Type: application/json" -d '{"email":"h.meyer@socialeurope.eu","name":"Henning Meyer","role":50}' $BASE/_emdash/api/auth/invite >/dev/null
