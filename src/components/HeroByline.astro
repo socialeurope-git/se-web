@@ -1,10 +1,10 @@
 ---
 /** Hero byline: inline (one or two authors) or stacked avatars + "A, B and C" (three or more). */
 import Avatar from "./Avatar.astro";
-import { authorUrl, type Byline } from "../se/site";
+import { authorUrl, avatarSrc, type Byline } from "../se/site";
 interface Props { bylines: Byline[] }
 const { bylines } = Astro.props;
 ---
 {bylines.length <= 2
 	? <div class="se-hero__byline se-hero__byline--inline">{bylines.map((b) => <a class="se-hero__author" href={authorUrl(b.slug)} rel="author"><Avatar byline={b} eager /><span class="se-hero__name">{b.displayName}</span></a>)}</div>
-	: <div class="se-hero__byline se-hero__byline--stacked"><div class="se-hero__stack">{bylines.map((b) => <a class="se-avatar se-avatar--stack" href={authorUrl(b.slug)} tabindex="-1" aria-hidden="true"><Avatar byline={b} eager bare /></a>)}</div><p class="se-hero__names">{bylines.map((b, i) => <>{i > 0 && (i === bylines.length - 1 ? <> <span class="se-hero__and">and</span> </> : ", ")}<a class="se-hero__name" href={authorUrl(b.slug)} rel="author">{b.displayName}</a></>)}</p></div>}
+	: <div class="se-hero__byline se-hero__byline--stacked"><div class="se-hero__stack">{bylines.map((b) => <a class:list={["se-avatar", "se-avatar--stack", !avatarSrc(b) && "se-avatar--initials"]} href={authorUrl(b.slug)} tabindex="-1" aria-hidden="true"><Avatar byline={b} eager bare /></a>)}</div><p class="se-hero__names">{bylines.map((b, i) => <>{i > 0 && (i === bylines.length - 1 ? <> <span class="se-hero__and">and</span> </> : ", ")}<a class="se-hero__name" href={authorUrl(b.slug)} rel="author">{b.displayName}</a></>)}</p></div>}

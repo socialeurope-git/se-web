@@ -7,6 +7,7 @@
 .entry-content figure.emdash-image--align-center { text-align: center; }
 .entry-content figure.emdash-image--align-left { float: left; margin: .5em 1em .5em 0; }
 .entry-content figure.emdash-image--align-right { float: right; margin: .5em 0 .5em 1em; }
+.entry-content figure.emdash-image--align-left, .entry-content figure.emdash-image--align-right { width: fit-content; max-width: 100%; }   /* WordPress keeps floats at every width and at the image's own size; EmDash caps them at 50 % and stacks them full-width below 640 px */
 .entry-content blockquote { box-sizing: border-box; overflow-wrap: break-word; }
 .entry-content .emdash-html-block { margin: 0; }
 .entry-content .emdash-html-block > :first-child { margin-top: 0; }

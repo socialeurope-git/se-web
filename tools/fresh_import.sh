@@ -102,6 +102,10 @@ node tools/clean_content.mjs | tail -20
 python3 tools/setup_site.py | grep -v '^field'
 # Sidebar advertisements as EmDash widget area (content widgets in Portable Text)
 node tools/ads_to_widgets.mjs | tail -1
+# Image attributes the importer drops: editor display widths and left/right floats (from the export, keyed by media item)
+python3 tools/apply_display_width.py | tail -1
+# Internal links to old slugs (WordPress 301s) -> final slugs
+python3 tools/fix_internal_links.py --apply | tail -2
 # Media library: alt texts, decoded filenames, unused items (WordPress attachments nothing references) removed
 python3 tools/media_meta.py --delete-unused | tail -3
 
