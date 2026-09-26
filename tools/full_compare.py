@@ -21,7 +21,7 @@ def strip_boxes(b):
     return b
 def norm_text(b):
     t = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", b, flags=re.S)
-    t = re.sub(r"<[^>]+>", " ", t); t = html.unescape(t).replace("\xa0", " ")
+    t = re.sub(r"</?(?:a|em|strong|span|sup|sub|b|i|u|code|small|abbr|cite|mark|s|del|ins)\b[^>]*>", "", t); t = re.sub(r"<[^>]+>", " ", t); t = html.unescape(t).replace("\xa0", " ")
     t = re.sub(r"(^|\s)\+(?=\s|$)", " ", t)   # the accordion's "+" icon is text on live, CSS here
     return re.sub(r"\s+", " ", t).strip()
 def features(h):
