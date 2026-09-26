@@ -1,5 +1,5 @@
 #!/bin/sh
-# Backup uploader (read-only role, never opens data.db): once a day copies the SQLite snapshots the app writes to
+# Backup uploader (read-only role, never opens data.db): once a day asks the app for a snapshot, copies the SQLite snapshots the app writes to
 # /app/data/backup/ (VACUUM INTO by the SE-Ops plugin) and the media bucket (Bunny S3) to the backup bucket, then pings
 # the Uptime Kuma push monitors. Env: S3_* (media bucket), BACKUP_* (target), BACKUP_HEARTBEAT_URL, MEDIA_HEARTBEAT_URL.
 DST=":s3,provider=Scaleway,endpoint=$BACKUP_ENDPOINT,region=$BACKUP_REGION,access_key_id=$BACKUP_ACCESS_KEY_ID,secret_access_key=$BACKUP_SECRET_ACCESS_KEY:$BACKUP_BUCKET/$BACKUP_PREFIX"
@@ -19,4 +19,4 @@ media_sync() {
 	&& { echo "media sync done $(date -u +%FT%TZ)"; ping "$MEDIA_HEARTBEAT_URL"; }
 }
 sleep 120
-while :; do db_copy; media_sync; sleep 3600; done
+while :; do db_copy; media_sync; sleep 86400; done   # once a day: every snapshot is a full copy of the database
