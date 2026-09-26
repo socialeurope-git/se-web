@@ -37,7 +37,8 @@ const stats = {}; const bump = (k, n = 1) => { stats[k] = (stats[k] ?? 0) + n; }
 const preview = {}; const sample = (kind, before, after) => { (preview[kind] ??= []); if (preview[kind].length < 3) preview[kind].push({ before: before.slice(0, 600), after }); };
 
 // ---------- media ----------
-const media = await listAll("/_emdash/api/media");
+const testFile = (process.argv.find((a) => a.startsWith("--test-html=")) || "").slice(12);   // offline check of one HTML block (no API)
+const media = testFile ? [] : await listAll("/_emdash/api/media");
 const mediaByKey = new Map(media.map((m) => [m.storageKey, m]));
 const MEDIA_RE = /\/_emdash\/api\/media\/file\/([A-Za-z0-9]+\.[a-z0-9]+)/;
 function mediaFromSrc(src) {
@@ -124,10 +125,22 @@ function dropJunkLinks(b) {
 }
 function relLink(href) { const m = href.match(/^https?:\/\/(?:www\.)?socialeurope\.eu(\/.*)?$/); return m ? (m[1] || "/") : href; }
 
+const IMG_HOLDER = (n) => n.tagName === "figure" || n.tagName === "picture" || n.tagName === "img" || (n.tagName === "a" && find(n, (x) => x.tagName === "img"));
 async function imageBlocks(el, opts = {}) {
-	// every <img> inside el becomes an image block; a figcaption becomes the caption (plain text) unless it has links
+	// every <img> inside el becomes an image block; a figcaption becomes the caption (plain text) unless it has links.
+	// Text that shares the element with the image (<p><picture>…</picture> Source: …</p>, <h6><figure>…</figure>Caption</h6>)
+	// is kept as paragraphs in source order.
 	const imgs = findAll(el, (n) => n.tagName === "img");
 	if (!imgs.length) return [htmlBlock(tidyHtml(outer(el)))].filter(Boolean);
+	if (el.tagName !== "figure" && el.tagName !== "picture" && el.tagName !== "img" && !(el.tagName === "a")) {
+		const kids = el.childNodes || []; const holders = kids.filter(IMG_HOLDER);
+		if (holders.length && kids.some((k) => !IMG_HOLDER(k) && (k.tagName ? textOf(k).trim() : (k.value || "").trim()))) {
+			const out = []; let buf = "";
+			const flush = () => { if (buf.trim()) out.push(...nativeBlocks(`<p>${buf}</p>`, opts.alignment ?? alignOf(el))); buf = ""; };
+			for (const k of kids) { if (IMG_HOLDER(k)) { flush(); out.push(...(await imageBlocks(k, opts))); } else buf += k.tagName ? outer(k) : (k.value || ""); }
+			flush(); bump("image with text in the same element split"); return out;
+		}
+	}
 	const cap = find(el, (n) => n.tagName === "figcaption");
 	const capHtml = cap ? inner(cap).trim() : "";
 	const link = opts.link ?? (() => { const a = find(el, (n) => n.tagName === "a" && find(n, (x) => x.tagName === "img")); return a ? attr(a, "href") : null; })();
@@ -216,7 +229,11 @@ async function convertRoot(n, ctx = {}) {
 		return nativeBlocks(outer(n), null);
 	}
 	if (tag === "figure" || tag === "picture" || tag === "img") {
-		if (c.includes("wp-block-table") || find(n, (x) => x.tagName === "table")) return tableBlock(find(n, (x) => x.tagName === "table"));
+		if (c.includes("wp-block-table") || find(n, (x) => x.tagName === "table")) {
+			const cap = find(n, (x) => x.tagName === "figcaption");
+			if (cap && textOf(cap).trim()) { bump("table kept as html (caption)"); return [htmlBlock(`<figure class="se-table"><table>${tidyHtml(inner(find(n, (x) => x.tagName === "table")))}</table><figcaption>${tidyHtml(inner(cap))}</figcaption></figure>`)]; }
+			return tableBlock(find(n, (x) => x.tagName === "table"));
+		}
 		if (c.includes("wp-block-embed") || find(n, (x) => x.tagName === "iframe")) return embedHtml(n);
 		return imageBlocks(n, { alignment: ctx.align });
 	}
@@ -226,7 +243,8 @@ async function convertRoot(n, ctx = {}) {
 	if (tag === "center") { const out = []; for (const ch of children(n)) out.push(...(await convertRoot(ch, { align: "center" }))); return out; }
 	if (tag === "section" || tag === "article" || tag === "main") { const out = []; for (const ch of children(n)) out.push(...(await convertRoot(ch, ctx))); return out; }
 	if (tag === "div") {
-		if (c.includes("wp-block-spacer") || c.includes("shareArt")) { bump("junk dropped"); return []; }
+		if (c.includes("wp-block-spacer")) { bump("junk dropped"); return []; }
+		if (c.includes("insideArticleShare")) { const out = []; for (const ch of children(n)) out.push(...(await convertRoot(ch, ctx))); return out; }
 		if (c.includes("wp-block-accordion")) return detailsHtml(n);
 		if (c.includes("wp-block-image")) return imageBlocks(n, { alignment: ctx.align });
 		if (c.some((x) => x.startsWith("content-box-"))) { bump("content box kept"); return [htmlBlock(tidyHtml(outer(n)))].filter(Boolean); }
@@ -259,6 +277,7 @@ function cleanNative(b) {
 	return b;
 }
 const alts = JSON.parse(fs.readFileSync(ROOT + "archive/alts.json", "utf8"));
+if (testFile) { const blocks = await convertHtmlBlock(fs.readFileSync(testFile, "utf8")); console.log(JSON.stringify(blocks, null, 1)); console.log(JSON.stringify(stats)); process.exit(0); }
 
 async function cleanEntry(coll, e) {
 	const before = JSON.stringify(e.data);
