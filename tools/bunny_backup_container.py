@@ -16,7 +16,7 @@ env = dict(l.strip().split("=", 1) for l in open(os.path.expanduser("~/.config/s
 a = api("GET", f"/apps/{app}")
 main = next(c for c in a["containerTemplates"] if c["name"] == "emdash")
 inherited = [e for e in main["environmentVariables"] if e["name"].startswith("S3_") or e["name"] in ("SE_OPS_TOKEN", "PORT")]
-vars_ = inherited + [{"name": k, "value": v} for k, v in env.items()]
+vars_ = [e for e in inherited if e["name"] not in env] + [{"name": k, "value": v} for k, v in env.items()]   # no duplicate names: Bunny then fails with "Failed to create container config"
 existing = next((c for c in a["containerTemplates"] if c["name"] == "backup"), None)
 body = {"name": "backup", "imageRegistryId": main["imageRegistryId"], "imageNamespace": main["imageNamespace"], "imageName": "se-web-backup", "imageTag": "latest", "imagePullPolicy": "always",
         "environmentVariables": vars_, "volumeMounts": [{"name": main["volumeMounts"][0]["name"], "mountPath": "/app/data"}], "endpoints": [], "entryPoint": {"command": "", "commandArray": [], "arguments": "", "argumentsArray": [], "workingDirectory": ""}}

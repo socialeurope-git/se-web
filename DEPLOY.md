@@ -47,12 +47,14 @@ opens `data.db`.
 EmDash's own daily backup is a JSON export into the bucket and **cannot be restored**. The restorable copy is a consistent
 SQLite snapshot plus the media bucket plus `EMDASH_ENCRYPTION_KEY` (kept in `~/.config/se-web/`).
 
-- **Snapshot from inside the app** (single connection): `VACUUM INTO /app/data/backup/data-<timestamp>.db`, run daily
-  by the SE-Ops plugin cron (see `plugins/se-ops`), old snapshots pruned.
+- **Snapshot from inside the app** (single connection): `POST /ops/snapshot` with `Authorization: Bearer $SE_OPS_TOKEN`
+  (env on the app container; `~/.config/se-web/ops-token`) runs `VACUUM INTO /app/data/backup/data-<timestamp>.db` on
+  EmDash's own database handle and prunes snapshots older than 3 days. The sidecar calls it on `localhost:4321` inside the pod;
+  through the CDN the request needs a JSON body (Bunny answers 405 to a bodiless POST).
 - **Sidecar `backup`** (`backup/Dockerfile`, image `ghcr.io/socialeurope-git/se-web-backup`, same volume, read-only role):
   rclone copies `/app/data/backup/` and the media bucket to Scaleway `social-europe-backup-amsterdam/<prefix>/` once a day and pings
   the Uptime Kuma push monitors (`BACKUP_HEARTBEAT_URL` for the database copy, `MEDIA_HEARTBEAT_URL` for the media copy).
-  It never opens `data.db`.
+  It never opens `data.db`. Its environment must not repeat a variable name (Bunny then fails with "Failed to create container config").
 - **Restore**: put the newest snapshot on a fresh volume as `/app/data/data.db`, media back into the bucket with
   `rclone sync`, start the matching app version. Env: `~/.config/se-web/backup.env`; `tools/bunny_backup_container.py` adds the sidecar.
 - Prefixes: staging `se-web-staging`, production `se-web`.
