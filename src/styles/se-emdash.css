@@ -57,6 +57,7 @@
 .entry-content .emdash-table-wrapper table { margin: 0; }
 /* Tables with a source caption stay tidy HTML (EmDash tables have no caption): same look as the WordPress table figure */
 .entry-content figure.se-table { margin: 0; display: flow-root; }
+.entry-content figure.se-table--fixed table { table-layout: fixed; width: 100%; }   /* the editor's "fixed layout" table: equal columns at every width */
 .entry-content figure.se-table table { margin: 0; }
 .entry-content figure.se-table figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }
 /* Native tables, cell level: EmDash's scoped table styles (0.9rem, .75rem padding, grey header, zebra rows, top-aligned) beat the

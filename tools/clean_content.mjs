@@ -238,9 +238,14 @@ async function convertRoot(n, ctx = {}) {
 	}
 	if (tag === "figure" || tag === "picture" || tag === "img") {
 		if (c.includes("wp-block-table") || find(n, (x) => x.tagName === "table")) {
-			const cap = find(n, (x) => x.tagName === "figcaption");
-			if (cap && textOf(cap).trim()) { bump("table kept as html (caption)"); return [htmlBlock(`<figure class="se-table"><table>${tidyHtml(inner(find(n, (x) => x.tagName === "table")))}</table><figcaption>${tidyHtml(inner(cap))}</figcaption></figure>`)]; }
-			return tableBlock(find(n, (x) => x.tagName === "table"));
+			const cap = find(n, (x) => x.tagName === "figcaption"), tbl = find(n, (x) => x.tagName === "table");
+			// native table blocks size columns by content; the editor's "fixed layout" (equal columns) has no native equivalent
+			const fixed = /\bhas-fixed-layout\b/.test(attr(tbl, "class") || "");
+			if ((cap && textOf(cap).trim()) || fixed) {
+				bump(fixed ? "table kept as html (fixed layout)" : "table kept as html (caption)");
+				return [htmlBlock(`<figure class="se-table${fixed ? " se-table--fixed" : ""}"><table>${tidyHtml(inner(tbl))}</table>${cap && textOf(cap).trim() ? `<figcaption>${tidyHtml(inner(cap))}</figcaption>` : ""}</figure>`)];
+			}
+			return tableBlock(tbl);
 		}
 		if (c.includes("wp-block-embed") || find(n, (x) => x.tagName === "iframe")) return embedHtml(n);
 		return imageBlocks(n, { alignment: ctx.align });
