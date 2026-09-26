@@ -226,8 +226,10 @@ async function convertRoot(n, ctx = {}) {
 	}
 	if (tag === "p") return hasImg ? imageBlocks(n, { alignment: alignOf(n) ?? ctx.align }) : nativeBlocks(outer(n), alignOf(n) ?? ctx.align);
 	if (tag === "blockquote") {
-		const ps = children(n).filter((c) => c.tagName === "p");
-		if (ps.length > 1) { const out = []; for (const c of children(n)) out.push(...nativeBlocks(`<blockquote>${c.tagName ? outer(c) : `<p>${c.value}</p>`}</blockquote>`, alignOf(n) ?? ctx.align)); bump("multi-paragraph quote split"); return out; }
+		// a <cite> after the quote paragraph is its own line on the live site: it becomes a second quote paragraph
+		const ps = children(n).filter((c) => c.tagName === "p" || c.tagName === "cite");
+		const part = (c) => (c.tagName === "cite" ? `<p>${outer(c).replace(/^<cite[^>]*>/, "").replace(/<\/cite>$/, "")}</p>` : c.tagName ? outer(c) : `<p>${c.value}</p>`);
+		if (ps.length > 1) { const out = []; for (const c of children(n)) out.push(...nativeBlocks(`<blockquote>${part(c)}</blockquote>`, alignOf(n) ?? ctx.align)); bump("multi-paragraph quote split"); return out; }
 		return nativeBlocks(outer(n), alignOf(n) ?? ctx.align);
 	}
 	if (tag === "ul" || tag === "ol") {

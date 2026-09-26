@@ -37,6 +37,10 @@ After the first start: Admin → Plugins → SE Ops → settings: Bunny API key,
 - `IgnoreQueryStrings` must be **off**: Astro's image endpoint keys every size on the query string (`/_image?href=…&w=…&h=…&f=…`).
 - Edge rule "Override Cache Time" 30 days, URL triggers `*/_image*` and `*/_emdash/api/media/file/*` (Bunny's URL trigger does not see the query string, so `*/_image?*` never matches): EmDash sends `max-age=0, must-revalidate` for media and transforms, the CDN would otherwise fetch every image from the pod. Storage keys are immutable ULIDs, so long caching is safe. Verified on staging: `cdn-cache: HIT` for transforms and originals.
 
+## Rollouts
+- `POST /mc/apps/{id}/deploy` alone does **not** start a rollout when the spec is unchanged (2026-09-26: the app sat at "inactive"/503 "We're deploying your app!" for two hours although both containers ran). A rollout needs a real template change: `PATCH /mc/apps/{id}/containers/{tpl}` with a changed env marker (`SE_ROLLOUT=<timestamp>`), then `POST /deploy`; the pod came back within a minute.
+- The "database or disk is full" SQLite errors on 2026-09-26 came from hourly 390 MB snapshots on a 2 GB volume; the volume is 8 GB now and snapshots are daily, newest two kept (see Backups).
+
 ## Backups (EmDash docs: "Backups and recovery")
 
 **Single writer rule.** The Magic Containers volume is a 9p mount (gVisor sandbox, `cache=remote_revalidating`). SQLite in

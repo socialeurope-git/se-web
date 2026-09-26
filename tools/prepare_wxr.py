@@ -10,7 +10,7 @@
 Usage: prepare_wxr.py <in.xml> <out.xml>"""
 import re, sys, html as H
 src = open(sys.argv[1], encoding="utf-8").read()
-stats = {"figures moved out of headings": 0, "newlines collapsed": 0, "nbsp": 0, "empty headings": 0, "empty paragraphs": 0, "junk anchors unwrapped": 0, "empty anchors removed": 0}
+stats = {"figures moved out of headings": 0, "newlines collapsed": 0, "nbsp": 0, "empty headings": 0, "empty paragraphs": 0, "junk anchors unwrapped": 0, "empty anchors removed": 0, "cite to paragraph": 0}
 def fix_heading(m):
     tag, attrs, inner = m.group(1), m.group(2), m.group(3)
     figs = re.findall(r"<figure[^>]*>[\s\S]*?</figure>", inner)
@@ -47,6 +47,8 @@ def clean_body(body):
     b = re.sub(r'<a\b[^>]*?href="([^"]*)"[^>]*>([\s\S]*?)</a>', anchor, b)
     e = len(re.findall(r"<h[1-6][^>]*>\s*</h[1-6]>", b)); stats["empty headings"] += e; b = re.sub(r"<!-- wp:heading[^>]*-->\s*<h[1-6][^>]*>\s*</h[1-6]>\s*<!-- /wp:heading -->|<h[1-6][^>]*>\s*</h[1-6]>", "", b)
     e = len(re.findall(r"<p[^>]*>\s*</p>", b)); stats["empty paragraphs"] += e; b = re.sub(r"<!-- wp:paragraph[^>]*-->\s*<p[^>]*>\s*</p>\s*<!-- /wp:paragraph -->|<p[^>]*>\s*</p>", "", b)
+    n = len(re.findall(r"<cite\b", b)); stats["cite to paragraph"] += n
+    b = re.sub(r"<cite\b[^>]*>([\s\S]*?)</cite>", r"<p>\1</p>", b)   # a quote's source line stays a line of its own (the converter would glue it to the quote)
     b = re.sub(r"\x00(\d+)\x00", lambda m: keep[int(m.group(1))], b)
     return b
 def item(m):

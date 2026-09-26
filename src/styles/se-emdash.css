@@ -58,3 +58,9 @@
 .entry-content figure.se-table { margin: 0; display: flow-root; }
 .entry-content figure.se-table table { margin: 0; }
 .entry-content figure.se-table figcaption { font-size: 13px; text-align: center; margin-top: .5em; margin-bottom: 1em; }
+/* Native tables, cell level: EmDash's scoped table styles (0.9rem, .75rem padding, grey header, zebra rows, top-aligned) beat the
+   frozen WordPress rules by specificity; this restores the WordPress table-block look (collapsed 1px borders, .5em cells, body font). */
+.entry-content .emdash-table { border-collapse: collapse !important; font-size: inherit !important; }
+.entry-content .emdash-table th, .entry-content .emdash-table td { border: 1px solid currentColor !important;   /* the WordPress table block: 1px solid in the text colour */ padding: .5em !important; vertical-align: middle !important; }
+.entry-content .emdash-table th { background: none !important; font-weight: 700 !important; }
+.entry-content .emdash-table tbody tr:nth-child(2n), .entry-content .emdash-table tbody tr:hover { background: none !important; }
