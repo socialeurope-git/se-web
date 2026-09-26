@@ -4,18 +4,18 @@
  *  Snapshots land in <data dir>/backup/data-<UTC>.db; older ones than KEEP_DAYS are pruned. */
 import type { APIRoute } from "astro";
 import { sql } from "kysely";
+import { getDb } from "emdash/runtime";
 import fs from "node:fs";
 import path from "node:path";
 
 export const prerender = false;
 const KEEP_DAYS = 3;
 
-export const POST: APIRoute = async ({ request, locals }) => {
+export const POST: APIRoute = async ({ request }) => {
 	const token = process.env.SE_OPS_TOKEN;
 	if (!token) return new Response("Not found", { status: 404 });
 	if (request.headers.get("authorization") !== `Bearer ${token}`) return new Response("Unauthorized", { status: 401 });
-	const db = (locals as { emdash?: { db?: unknown } }).emdash?.db;
-	if (!db) return new Response("no database", { status: 500 });
+	const db = await getDb();
 	const dbPath = process.env.DATABASE_PATH || "./data.db";
 	const dir = path.join(path.dirname(dbPath), "backup");
 	fs.mkdirSync(dir, { recursive: true });
